@@ -1,31 +1,36 @@
 # Pinea / Piny 装配配置 (PILOT_HOME=deploy/pilot-home)。
-# 模型层指向局域网 LocalAI(OpenAI 兼容)。第 0 步 spike 期间关闭 router，用单模型保证确定性。
+# 模型层直连本机 ollama(OpenAI 兼容 :11434/v1)，去掉 LocalAI 代理层——隔离 tool-calling 解析问题。
+# 第 0 步 spike 期间关闭 router，用单模型保证确定性。
 schemaVersion: 1
+gateway:
+  # 默认 18789 被本机一个无关常驻 openclaw-gateway(/app, 已跑 32 天)占用，本项目用 18790。
+  # 注意：实际监听端口由 env PILOTDECK_GATEWAY_PORT 决定(见 cli)，这里仅用于 TUI 探测一致。
+  port: 18790
 agent:
-  model: localai/ollama-qwen3-32b
+  model: ollama/gpt-oss:20b
 model:
   providers:
-    localai:
+    ollama:
       protocol: openai
-      url: http://192.168.11.155:8080/v1
-      apiKey: sk-localai
+      url: http://localhost:11434/v1
+      apiKey: ollama
       models:
-        ollama-qwen3-coder-30b:
-          displayName: Qwen3 Coder 30B (LocalAI)
+        "gpt-oss:20b":
+          displayName: GPT-OSS 20B (ollama)
           capabilities:
             supportsToolUse: true
             supportsStreaming: true
             contextWindow: 32768
             maxOutputTokens: 8192
-        ollama-qwen3-32b:
-          displayName: Qwen3 32B (LocalAI)
+        "qwen3-coder:30b":
+          displayName: Qwen3 Coder 30B (ollama)
           capabilities:
             supportsToolUse: true
             supportsStreaming: true
             contextWindow: 32768
             maxOutputTokens: 8192
-        qwen35-mtp:
-          displayName: Qwen3.5 MTP (LocalAI)
+        "qwen3:32b":
+          displayName: Qwen3 32B (ollama)
           capabilities:
             supportsToolUse: true
             supportsStreaming: true
