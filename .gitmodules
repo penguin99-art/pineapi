@@ -1,0 +1,3 @@
+[submodule "vendor/pilotdeck"]
+	path = vendor/pilotdeck
+	url = https://github.com/OpenBMB/PilotDeck.git

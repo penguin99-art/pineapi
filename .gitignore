@@ -1,0 +1,21 @@
+# --- 依赖 / 构建产物 ---
+node_modules/
+dist/
+*.log
+
+# --- PilotDeck 运行时 home (deploy/pilot-home) ---
+# 约定：版本管理 pilotdeck.yaml(装配配置/模型 provider 入口)，
+# 但排除密钥、运行时状态、从 submodule 同步生成的 skills。
+deploy/pilot-home/server-token
+deploy/pilot-home/router/
+deploy/pilot-home/skills/
+deploy/pilot-home/sessions/
+deploy/pilot-home/logs/
+
+# --- 模型权重 (大文件，不入库) ---
+models/**/*.gguf
+models/**/*.bin
+models/**/*.safetensors
+
+# --- 杂项 ---
+.DS_Store
