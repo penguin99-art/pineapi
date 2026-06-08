@@ -10,6 +10,8 @@ deploy/pilot-home/server-token
 deploy/pilot-home/router/
 deploy/pilot-home/skills/
 deploy/pilot-home/sessions/
+deploy/pilot-home/projects/
+deploy/pilot-home/telemetry/
 deploy/pilot-home/logs/
 
 # --- 模型权重 (大文件，不入库) ---
