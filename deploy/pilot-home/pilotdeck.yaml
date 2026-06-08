@@ -36,6 +36,13 @@ model:
             supportsStreaming: true
             contextWindow: 32768
             maxOutputTokens: 8192
+        "qwen3.6:35b":
+          displayName: Qwen3.6 35B MoE (ollama)
+          capabilities:
+            supportsToolUse: true
+            supportsStreaming: true
+            contextWindow: 32768
+            maxOutputTokens: 8192
 adapters:
   feishu:
     enabled: false

@@ -38,6 +38,7 @@ LocalAI 挂 MiniCPM（及备选 Qwen）暴露 OpenAI 兼容端点后，PilotDeck
 | 3c | gpt-oss:20b | PilotDeck agent loop ×8(唯一会话, 普通目录) | 读文件→总结→写回 | **8/8 通过**，输出均为真实总结 | ✅ | — (热态 10-19s/次) |
 | 3d | gpt-oss:20b | PilotDeck agent loop ×6(点目录 `.spike/`) | 读文件→总结→写回 | 6/6 都发原生工具调用，但 ~3 次把 `.spike` 路径写歪(`\.spike`/` .spike`/`spike`) | ⚠️ | **非协议问题**：点目录路径被模型转义/篡改；另复用 session id 致 1 次"已完成"跳过 |
 | 3e | gpt-oss:20b | PilotDeck agent loop ×20(harness run.sh) | 读文件→总结→写回 | **20/20 = 100% 通过**，resp 均见 `[read_file done][write_file done]`，输出均为真实总结 | ✅ | — (平均 12s/次，唯一 session + 普通文件名) |
+| 3f | qwen3.6:35b(MoE/Q4) | PilotDeck agent loop ×10(harness, `PILOT_AGENT_MODEL` 切) | 读文件→总结→写回 | **10/10 = 100% 通过**，router 确认实跑 qwen3.6:35b(tier=medium)，总结质量更细 | ✅ | — (平均 31s/次，约为 gpt-oss 的 2.6×；质量换速度) |
 
 > 延迟基线：OpenAI 层单工具 ~17-18s；qwen3-32b 直连最简对话 ~32s(慢且 thinking)；PilotDeck 多步端到端 80-180s。
 > **ollama 直连 + gpt-oss:20b**：单工具直连 ~14s；PilotDeck 多步首跑(冷) ~78s，热态 10-19s/次。
@@ -68,7 +69,7 @@ LocalAI 挂 MiniCPM（及备选 Qwen）暴露 OpenAI 兼容端点后，PilotDeck
 - [x] ~~换 serving/模型~~ → **切 ollama 直连 + gpt-oss:20b，已恢复原生 tool_calls**（排障方向 #1/#4）。
 - [x] ~~固化复现~~ → harness `tool-calling/run.sh` 就绪（进程组管理 server，零孤儿）。
 - [x] ~~正式跑 ≥20 次~~ → **`run.sh 20` 跑出 20/20 = 100%**，平均 12s/次，无失败。
-- [ ] **qwen 在 ollama 直连下复测**：`qwen3:32b` / `qwen3-coder:30b` / `qwen3.5:*`，看是否也恢复（之前的失败是 LocalAI 层 + 模型选择，未必是 qwen 本身不行）；关 thinking 对比。
+- [~] **qwen 在 ollama 直连下复测**：`qwen3.6:35b` 已测 **10/10=100%**（证实之前 qwen 失败是 LocalAI 层 + 老模型，非 qwen 家族不行），但慢 ~2.6×。`qwen3:32b`/`qwen3-coder:30b`/`qwen3.5:*` 待补；关 thinking 对比待做。
 - [ ] **更难的多步任务**：>2 步、链式工具（read→grep→edit→write），看 gpt-oss:20b 是否仍稳。
 - [ ] **盒子算力**：20B/MXFP4 在目标盒子端侧的 tok/s 与延迟单独量；若不达标，找更小但 tool-calling 稳的模型。
 - [ ] **路径鲁棒性**：给 agent 的 prompt/skill 约定「用绝对路径或非点目录」，规避点目录被篡改。
