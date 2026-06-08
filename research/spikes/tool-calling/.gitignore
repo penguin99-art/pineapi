@@ -1,0 +1,5 @@
+# agent 的临时工作区(自带 .git，每次跑会重写)
+workspace/
+# 跑出来的输出/响应/日志：只留目录，不入库样本(需要时手动 git add 个别样本)
+results/*
+!results/.gitkeep

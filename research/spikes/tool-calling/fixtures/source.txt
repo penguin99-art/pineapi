@@ -1,0 +1,9 @@
+Piny 项目周报（spike 测试素材，固定不变）
+
+本周进展：
+1. 把 PilotDeck 以 submodule 锁版本接入，pnpm 跑通本地 gateway。
+2. 模型层从局域网 LocalAI 切到本机 ollama 直连，去掉一层代理，隔离 tool-calling 解析问题。
+3. 验证 gpt-oss:20b 在 ollama OpenAI 端点能正确返回原生 tool_calls。
+
+风险：本地模型经 PilotDeck agent loop 的多步工具调用此前在 LocalAI 后端不稳，会退化成文本伪调用。
+下一步：用 ollama 直连复跑「读文件→总结→写回」，确认是否恢复原生工具协议。
