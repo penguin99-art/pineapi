@@ -19,6 +19,8 @@ Runtime 经配置把模型请求打到我们的能力面（OpenAI 协议）。
 ### A) 内置 `api_server` channel（HTTP，MVP 用这个）
 依据：`vendor/pilotdeck/src/adapters/channel/api-server/ApiServerChannel.ts`。
 
+> **此接缝已升格为对外 ② Agent 面**（`agent-api.md`）：网关 `/v1/agent/*` 转发到这里，对外用 `X-Session-Id`（网关内部翻译成下方 `X-Hermes-Session-Id`），并加对外鉴权/计量。对内仍是灵魂/桌伴的 inbound 接缝。两个角色同一机制，零改核心。
+
 - `POST /v1/chat/completions`（OpenAI 兼容；默认 `127.0.0.1:8642`，env `API_SERVER_PORT/HOST/KEY`）。
 - 会话：请求头 `X-Hermes-Session-Id: <id>`（缺省自动生成；同 id 串接上下文）。**同一 session 同时只允许一个进行中回合**（并发返回 `429`）。
 - 鉴权：`Authorization: Bearer <API_SERVER_KEY>`（配了才校验）。

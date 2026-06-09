@@ -1,7 +1,7 @@
 # L7 公共 Skill 契约（可复用行业能力）
 
-> 配套：架构见 `../architecture.md` §7，能力面见 `capability-api.md`，总览见 `README.md`。
-> 这是 **ToB 第二类接口**——把行业流程做成可复用 skill，发 B 端。
+> 配套：架构见 `../architecture.md` §7，能力面见 `capability-api.md`，Agent 面见 `agent-api.md`，总览见 `README.md`。
+> 这是 **ToB 第三类接口**——把行业流程做成可复用 skill，跑在 ② Agent 面之上，发 B 端。
 > 依据（PilotDeck 真实契约）：`vendor/pilotdeck/skills/*/SKILL.md`、`vendor/pilotdeck/src/extension/skills/types.ts`、gateway 的 `skillsList/skillRead/...` RPC（`src/gateway/protocol/types.ts`）。
 
 ## 0. 一句话

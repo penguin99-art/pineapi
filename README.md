@@ -27,7 +27,8 @@ Piny 是一台本地常驻的个人 AI 节点。技术上分两层：
 | [`AGENTS.md`](AGENTS.md) | **开发指导原则（必读，含红线 + agent-native 工作法）** |
 | [`docs/architecture.md`](docs/architecture.md) | 分层架构 · 全景图 · 四进程 · 两个接缝 · 事件 schema |
 | [`docs/model-gateway.md`](docs/model-gateway.md) | L2 能力面网关设计（ToB 模型能力对外） |
-| [`docs/interfaces/`](docs/interfaces/) | **各层接口契约**（能力面 API · skill · runtime · 总线） |
+| [`docs/interfaces/tob-overview.md`](docs/interfaces/tob-overview.md) | **ToB 接口总览（按层次）**——对外卖什么、怎么对接的唯一入口 |
+| [`docs/interfaces/`](docs/interfaces/) | 各层接口契约全集（ToB 三类 + runtime · 总线） |
 | [`docs/build-plan.md`](docs/build-plan.md) | 搭建顺序 · 每步通过标准 · 感知/表达细化 |
 | [`docs/pilotdeck-integration.md`](docs/pilotdeck-integration.md) | 仓库结构 · 怎么融 PilotDeck · 零改核心接入地图 · 上游同步 |
 | [`docs/agent-native-workflow.md`](docs/agent-native-workflow.md) | **怎么写这套代码**：人机分工 · living-doc 控制面 · skill 克制 · 知识注入 |
