@@ -28,7 +28,7 @@
 - spike **有边界**：开头写清「要回答的问题」和「判定标准」，得到结论就**退役**（标 done，结论沉淀回 `architecture.md` 或代码注释），不无限跑。
 - `build-plan.md` 的「通过标准」本身就是 living doc 的轻量形态，沿用同一套。
 
-模板见 `research/spikes/_template.md`，第一个实例见 `research/spikes/tool-calling-localai.md`。
+模板见 `research/spikes/_template.md`，第一个实例见 `research/spikes/tool-calling.md`。
 
 ## 3. skill 克制原则
 
@@ -46,7 +46,7 @@
 写哪块前先注入，别让 agent 凭记忆瞎写：
 
 ```
-权威源(PilotDeck 源码 / MiniCPM / LocalAI / MCP / PilotDeck hook&channel 协议)
+权威源(PilotDeck 源码 / MiniCPM·Qwen / ollama·vllm-omni·whisper·扩散后端 / MCP / PilotDeck hook&channel 协议)
    → agent 蒸成 research/knowledge/<topic>.md(摘要 + 关键接口 + 我们怎么用)
    → 实现时引用这份语料,而不是重新猜
 ```
@@ -57,7 +57,7 @@
 
 把盒子的真实约束当一等输入喂进去，让 agent 的方案落在**端侧能跑**的可行域：
 - 算力 / 功耗包络 / NPU 算子支持 → 决定感知用多大模型、跑几级级联；
-- 端侧延迟预算 → 决定哪些走 LocalAI、哪些走云、哪些预计算；
+- 端侧延迟预算 → 决定哪些走本地网关后端、哪些走云、哪些预计算；
 - 记忆隐私 → 决定什么留盒子、什么能出网。
 
 约束写进对应 spike 的开头，agent 探索时必须满足。
@@ -68,7 +68,7 @@
 
 | build-plan 步 | 对应 spike（示例） |
 | --- | --- |
-| 第 0 步 本地模型 tool calling | `research/spikes/tool-calling-localai.md`（已立） |
+| 第 0 步 本地模型 tool calling | `research/spikes/tool-calling.md`（已过） |
 | 第 4 步 感知级联成本 | `research/spikes/perception-cost.md`（需要时立） |
 | SKU 选型 | `research/spikes/sku-codesign.md`（需要时立） |
 

@@ -1,4 +1,6 @@
-# Spike: LocalAI + 端侧模型的 agentic tool calling
+# Spike: 端侧模型的 agentic tool calling（ollama 直连）
+
+> 历史说明：本 spike 早期经 LocalAI 代理验证失败，后切 **ollama 直连**通过；LocalAI 已弃用（见 `../../docs/model-gateway.md` §1）。下文保留 LocalAI 阶段记录作为排障史。
 
 > living doc。agent 边执行边回写。这是**全项目最大风险**：本地模型若不能稳定多步调工具，PilotDeck 的 agent loop 就跑不起来，后面全塌。过了再写任何集成代码。
 > 方法见 `../../docs/agent-native-workflow.md`，背景见 `../../docs/build-plan.md` 第 0 步。
@@ -11,7 +13,7 @@
 - **可用模型（ollama 本机）**: `gpt-oss:20b`(主，原生 tool calling 最稳) / `qwen3-coder:30b` / `qwen3:32b` / `qwen3.5:*`(2b~122b) / `qwen3.6:27b/35b` / `gemma4:*` / `minicpm-v:latest`(视觉) / `nomic-embed-text`(embed)。
 
 ## 要回答的问题
-LocalAI 挂 MiniCPM（及备选 Qwen）暴露 OpenAI 兼容端点后，PilotDeck 能否用它**稳定**完成一次多步、带工具调用的任务（读文件 → 总结 → 写回），不靠云模型兜底？
+本地模型（经 OpenAI 兼容端点）能否让 PilotDeck **稳定**完成一次多步、带工具调用的任务（读文件 → 总结 → 写回），不靠云模型兜底？（已验：ollama 直连 + gpt-oss:20b 20/20 通过。）
 
 ## 约束（探索必须满足）
 - 算力 / 功耗 / NPU: 目标盒子 SKU（Lite/Pro 待定）的端侧算力包络，不靠外接大卡。

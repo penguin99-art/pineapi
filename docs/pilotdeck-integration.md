@@ -10,7 +10,8 @@ pineapi/                        ← 本仓（私有）
 ├─ AGENTS.md / README.md / docs/
 ├─ vendor/
 │  └─ pilotdeck/                ← git submodule,锁版本,只读(= 🔵Core 实现)
-├─ models/                      ← LocalAI 配置(模型 yaml / 端点)
+├─ gateway/                     ← Pinea Model Gateway(L2 能力面,FastAPI,见 docs/model-gateway.md)
+├─ models/                      ← 后端/模型配置(ollama / speaches / TTS / ComfyUI 端点)
 ├─ soul/                        ← 🟠灵魂层(自研)
 │  ├─ perception/               ← 感知服务(Python):级联 + 认主,发 presence/voice
 │  ├─ expression/               ← 表达服务:状态机 + 灯带/TTS 渲染器
@@ -31,7 +32,7 @@ pineapi/                        ← 本仓（私有）
 # 在本仓
 git submodule add <PilotDeck repo> vendor/pilotdeck
 git submodule update --init --recursive
-cd vendor/pilotdeck && pnpm install && pnpm server   # 默认 :3001
+cd vendor/pilotdeck && pnpm install && pnpm server   # gateway 默认 :18789(本项目 18790,见 deploy/pilot-home)；web UI :3001
 ```
 
 > submodule 锁 commit。升级 = 进 submodule 切 tag/commit → 在本仓提交新指针。**永远不在 submodule 里留本地改动。**
@@ -45,7 +46,7 @@ cd vendor/pilotdeck && pnpm install && pnpm server   # 默认 :3001
 | 表达/Studio（订阅流） | `GatewayWsClient` 消费 `GatewayEvent` | `src/gateway/`（导出 client/RemoteGateway） |
 | 桌伴 channel | 自定义 `ChannelAdapter`，仿 `ApiServerChannel` | `src/adapters/channel/.../ApiServerChannel.ts` |
 | 设备反控 | MCP server | `src/mcp/` |
-| 模型 | 配置 `model.providers`（protocol:"openai" → LocalAI） | 配置层,不碰代码 |
+| 模型 | 配置 `model.providers`（protocol:"openai" → Pinea Model Gateway；MVP 可直指 ollama） | 配置层,不碰代码 |
 | Studio 数据 | gateway 契约 + web 读 API（listProjects / readSessionMessages） | `src/gateway/protocol`、`src/web/server` |
 
 **已知摩擦**：`loadEnabledChannels.ts` 的 `CHANNEL_LOADERS` 是硬编码注册表。MVP 不碰它——感知/桌伴都走内置 `api_server`。确需专属 channel → 作为**通用特性**提交回 PilotDeck 上游，不在 fork 里改。
@@ -65,4 +66,4 @@ UI 从零做 Piny 体验，但**后端零重写**：把 PilotDeck 的 `gateway/p
 
 ## 6. B 端发货
 
-发货 = 🔵Core（`vendor/pilotdeck` + LocalAI + 配置 + Skill/Workflow），**不含** `soul/`。因为灵魂从未渗进 Core（AGENTS 红线 2），拆分是配置级,不是重构。
+发货 = 🔵Core（`vendor/pilotdeck` + Pinea Model Gateway + 后端 + 配置 + Skill/Workflow），**不含** `soul/`。因为灵魂从未渗进 Core（AGENTS 红线 2），拆分是配置级,不是重构。

@@ -1,7 +1,7 @@
 # tool-calling 复现 harness
 
 第 0 步最大风险点的实测脚本：**本地模型经 PilotDeck agent loop 能否稳定走原生 `tool_calls` 完成多步工具任务**。
-叙事 / 试验矩阵 / 结论在上一层的 living doc：[`../tool-calling-localai.md`](../tool-calling-localai.md)。本目录只放「可复跑的实测」。
+叙事 / 试验矩阵 / 结论在上一层的 living doc：[`../tool-calling.md`](../tool-calling.md)。本目录只放「可复跑的实测」。
 
 ## 一键跑
 

@@ -1,7 +1,8 @@
 # 搭建顺序（施工图）
 
-> 配套：架构见 `architecture.md`，原则见 `../AGENTS.md`，融合见 `pilotdeck-integration.md`。
+> 配套：架构见 `architecture.md`，原则见 `../AGENTS.md`，融合见 `pilotdeck-integration.md`，能力面/接口见 `model-gateway.md` + `interfaces/`。
 > 规则：每步有「通过标准」，过了再下一步，不跳步。风险前置、假数据先行。
+> 两条并行线：下面 6 步是 **🟠灵魂主线**；**🔵能力面/公共 Skills（ToB）** 是并行的 Core 线（不依赖灵魂），照 `interfaces/capability-api.md` + `interfaces/skill-contract.md` 推进，见本页末「ToB 并行线」。
 
 ## 阶段总览
 
@@ -10,14 +11,15 @@
 | **P0 打通** | 本地模型 + 内核 + 总线骨架跑通 | 一句话进 → agent 用本地模型回 → 表达端亮灯 |
 | **P1 灵魂** | 感知认主 + 表达 6 态 + 主动触发 | 人进屋,Piny 主动招呼,灯随状态变 |
 | **P2 体验** | Studio 壳 + 桌伴 + 资料/记忆闭环 | 资料处理 + 记忆 + Workflow 复用成形 |
+| **TB ToB（并行）** | 能力面网关 + 公共 Skills | SI 经 OpenAI 端点用多模态；行业 skill 可复用发货 |
 
 ## 搭建顺序（6 步）
 
-### 第 0 步 · 起跑线（最先做，验证最大风险）
+### 第 0 步 · 起跑线（最先做，验证最大风险）✅ 已过
 - 把 PilotDeck 以 submodule 拉进 `vendor/pilotdeck`，`pnpm install && pnpm server` 跑起来。
-- 配 LocalAI，起 MiniCPM / Qwen，暴露 OpenAI 兼容端点。
-- 改 PilotDeck 配置 `model.providers`：指向 LocalAI（`protocol:"openai"`，`url` 指 LocalAI，填模型名）。
-- **通过标准**：PilotDeck 用**本地模型**完成一次**带工具调用**的多步任务（读文件→总结→写回）。tool calling 不稳就先调模型/提示词/采样，别往下走。
+- 起本地模型：**ollama 直连**（OpenAI 兼容 `:11434/v1`），跑 gpt-oss / MiniCPM / Qwen。（LocalAI 已弃用，见 `model-gateway.md` §1。）
+- 改 PilotDeck 配置 `model.providers`：MVP 直指 ollama（`protocol:"openai"`，`url` 指 `:11434/v1`）；正式接 Pinea Model Gateway（能力面）后改指网关。
+- **通过标准**：PilotDeck 用**本地模型**完成一次**带工具调用**的多步任务（读文件→总结→写回）。→ **已达成：gpt-oss:20b 经 PilotDeck 20/20=100%**（见 `../research/spikes/tool-calling.md`）。
 
 ### 第 1 步 · 总线骨架
 - 起 PineaState 总线（Redis pub/sub 或 WebSocket 二选一，先简单）。
@@ -25,7 +27,7 @@
 - **通过标准**：A 进程发事件，B 进程秒收，schema 校验通过。
 
 ### 第 2 步 · Outbound 接缝（先做出口，因为可全程假数据驱动）
-- 写表达渲染器：订阅总线 `state` → 驱动灯带 / TTS（TTS 走 LocalAI）。
+- 写表达渲染器：订阅总线 `state` → 驱动灯带 / TTS（TTS 走能力面网关 `/v1/audio/speech`）。
 - 写一个 PilotDeck 磁盘 hook 脚本：`SessionStart/Stop/PreModelRequest` → 往总线发 `state`。
 - **通过标准**：手动给内核发一句 → 灯带走 `thinking→speaking→idle`，无需感知就能演示。
 
@@ -46,6 +48,17 @@
 - 桌伴：盒子侧 `ChannelAdapter`（仿 `api_server`），Mac 瘦客户端走 LAN WS + API key，先 T0（文件/通知）。
 - 资料闭环：inbox 自动路由 + 记忆入库 + 一个可复用 Workflow。
 - **通过标准**：丢资料进 inbox → 自动处理入记忆 → 之后能被记忆+Workflow 复用；Studio 看到全过程。
+
+## ToB 并行线（🔵Core，不依赖灵魂，可同时推进）
+
+> 契约见 `interfaces/capability-api.md`（能力面）+ `interfaces/skill-contract.md`（公共 skill）。设计见 `model-gateway.md`。
+
+- **T0 网关骨架 + chat 透传**：FastAPI 起 `/v1/chat/completions` → ollama；PilotDeck `model.providers` 指过来，回归 tool-calling spike 不掉。**通过标准**：经网关跑通带工具的多步任务。
+- **T1 STT 端点**：`/v1/audio/transcriptions` → speaches；见 `../research/spikes/stt-gateway.md`。**通过标准**：中文 ~1min 音频转写可用、RTF≤0.5。
+- **T2 「音频资料整理」skill**：磁盘 skill，调网关 STT → 去重/打标/归档入记忆。第一个公共行业 skill。**通过标准**：丢一批录音 → 自动转写归档、可被记忆复用。
+- **T3 按需扩模态**：TTS → 生图 → 视频（异步）；盒子选型见 `../research/spikes/vllm-omni-box.md`。
+
+并行约定：每个能力先用 **mock 后端**立契约，SI/skill 同时对接，真模型后置替换（契约不变）。
 
 ## 三个工程判断
 

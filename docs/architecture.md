@@ -1,6 +1,6 @@
 # 架构
 
-> 配套：原则见 `../AGENTS.md`，搭建顺序见 `build-plan.md`，融合见 `pilotdeck-integration.md`，能力面见 `model-gateway.md`。
+> 配套：原则见 `../AGENTS.md`，搭建顺序见 `build-plan.md`，融合见 `pilotdeck-integration.md`，能力面见 `model-gateway.md`，**各层接口契约见 `interfaces/`**。
 
 ## 0. 全景图（整图）
 
@@ -78,7 +78,7 @@
 | --- | --- | --- |
 | L0 硬件 | 盒子 / 麦阵列 / 摄像头 / 灯带 / 传感器 | 自研硬件 |
 | L1 系统 | OS + GPU 调度 + 设备 adapter + LAN/mDNS + 物理开关 | 标准件 + 自研 |
-| L2 模型 | **Pinea Model Gateway**（OpenAI 兼容能力面：chat→ollama / STT / TTS / 生图 / 视频）+ MiniCPM/Qwen；LocalAI 降级为可选后端 | 自研薄网关 + 复用后端（详见 `model-gateway.md`） |
+| L2 模型 | **Pinea Model Gateway**（OpenAI 兼容能力面：chat→ollama / STT / TTS / 生图 / 视频）+ MiniCPM/Qwen/gpt-oss（LocalAI 已弃用） | 自研薄网关 + 复用后端（详见 `model-gateway.md`） |
 | L3 记忆 | 白盒记忆（可看/改/回滚/WorkSpace 隔离）— 当前由 runtime 提供 | 自有护城河 |
 | L4 执行 | **Agent Runtime**（agent loop / 工具 / Skill / Workflow / 智能路由 / Always-on）；当前实现 = PilotDeck，**可换** | 复用·可替换层 |
 | L5 感知·表达 | VAD/MiniCPM-o/认脸 + 灯带/voice/PineaState | **自研（灵魂）** |
@@ -91,7 +91,7 @@ L3/L4 = Agent Runtime 层（当前实现 PilotDeck，只依赖契约故可换）
 
 ```
 ① Pinea Model Gateway 能力面,Python/FastAPI  OpenAI 兼容端点(chat→ollama/STT/TTS/生图/视频)
-② PilotDeck Gateway   核心,TS/Node           agent/记忆/路由/任务（默认 :3001）
+② PilotDeck Gateway   核心,TS/Node           agent/记忆/路由/任务（gateway 默认 :18789，本项目 18790；web UI :3001）
 ③ 感知服务             Python                       发 presence/voice 事件
 ④ 表达服务             任意                         收 state,渲染灯带/TTS
         ③④ 经 ──► PineaState 总线 ◄── 互联

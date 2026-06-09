@@ -1,17 +1,17 @@
 # Pinea Model Gateway（能力面 · L2）
 
 > 配套：架构见 `architecture.md`，原则见 `../AGENTS.md`，融合见 `pilotdeck-integration.md`。
-> 定位：🔵Core 的模型层（L2）。无头、可发 B 端。**替代 LocalAI 作为"门面"**，LocalAI 降级为可选后端之一。
+> 定位：🔵Core 的模型层（L2）。无头、可发 B 端。**替代 LocalAI 作为"门面"**（LocalAI 已弃用）。
 
 ## 1. 为什么自研网关（弃用 LocalAI 当门面）
 
-LocalAI 在本机现状 = 套在 ollama 前的转发层，自己不 serving，且在 tool-calling spike 里把原生 `tool_calls` 解析坏了（见 `research/spikes/tool-calling-localai.md`）。负债 > 价值：
+LocalAI 在本机现状 = 套在 ollama 前的转发层，自己不 serving，且在 tool-calling spike 里把原生 `tool_calls` 解析坏了（见 `research/spikes/tool-calling.md`）。负债 > 价值：
 
 - 多模态后端被它的封装卡死，换更好的 STT/视频后端要跟它抽象打架；
 - 无干净的多租户鉴权/配额/计量（ToB 卖能力面的刚需）；
 - tool calling 经它会坏。
 
-**决策**：自研一个**薄**网关当统一能力面。LocalAI 不删，降级成网关背后的**可换后端之一**（某模态它够用就先挂着）。
+**决策**：自研一个**薄**网关当统一能力面，**当前不用 LocalAI**（理论上它仍可作某模态后端，但默认不挂）。
 
 > 这修订了早期"L2 = LocalAI"的约束。约束由人定（见 `agent-native-workflow.md`），已确认。
 
