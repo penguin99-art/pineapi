@@ -9,7 +9,7 @@ Piny = 本地常驻的个人 AI 节点。两层：
 - **🔵 Pinea Core（无头，复用 PilotDeck）**：执行 / 记忆 / 数据 / 安全 / SDK。B 端也复用。
 - **🟠 Piny 灵魂层（自研，C 端专属）**：感知（认主）/ 表达（灯带·voice）/ soul（主动时机）。
 
-模型层 = LocalAI（OpenAI 兼容，MiniCPM / Qwen）。执行内核 = PilotDeck（自有，可商用可改）。
+模型层 = 自研 **Pinea Model Gateway**（OpenAI 兼容能力面：chat→ollama / STT / TTS / 生图 / 视频；只路由+归一+治理，不做推理；详见 `docs/model-gateway.md`）；LocalAI 降级为可选后端，不再当门面。执行内核 = **Agent Runtime 层**，当前实现 = PilotDeck（自有，可商用可改）；自研只依赖其契约/扩展点，故 runtime 原则上可换（见 `docs/architecture.md` §0）。
 
 ## 2. 红线（违反即返工）
 
