@@ -1,0 +1,640 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Pinea / Piny 架构与接口总览</title>
+  <style>
+    :root {
+      --bg: #f6f7fb;
+      --panel: #ffffff;
+      --ink: #1d2433;
+      --muted: #647084;
+      --line: #d8deea;
+      --blue: #dff0ff;
+      --blue-strong: #2f6fed;
+      --orange: #fff0df;
+      --orange-strong: #d46b08;
+      --green: #eaf8ef;
+      --green-strong: #218c4a;
+      --purple: #f1ecff;
+      --purple-strong: #6d49d8;
+      --code: #101828;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+      line-height: 1.6;
+    }
+
+    header {
+      padding: 48px 56px 28px;
+      background: linear-gradient(135deg, #152033 0%, #263b63 62%, #335d8f 100%);
+      color: #fff;
+    }
+
+    header h1 {
+      margin: 0 0 12px;
+      font-size: 34px;
+      line-height: 1.2;
+    }
+
+    header p {
+      max-width: 980px;
+      margin: 0;
+      color: rgba(255, 255, 255, 0.84);
+      font-size: 16px;
+    }
+
+    main {
+      max-width: 1220px;
+      margin: 0 auto;
+      padding: 28px 28px 64px;
+    }
+
+    section {
+      margin: 22px 0;
+      padding: 28px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      box-shadow: 0 8px 24px rgba(20, 35, 60, 0.06);
+    }
+
+    h2 {
+      margin: 0 0 16px;
+      font-size: 24px;
+      line-height: 1.25;
+    }
+
+    h3 {
+      margin: 22px 0 10px;
+      font-size: 18px;
+    }
+
+    p { margin: 8px 0; }
+
+    a { color: var(--blue-strong); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    code {
+      padding: 2px 6px;
+      border-radius: 6px;
+      background: #eef2f8;
+      color: #111827;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.92em;
+    }
+
+    pre {
+      overflow-x: auto;
+      padding: 16px;
+      border-radius: 14px;
+      background: var(--code);
+      color: #e6edf7;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0;
+      overflow: hidden;
+      border-radius: 12px;
+    }
+
+    th, td {
+      padding: 11px 12px;
+      border: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      background: #f2f5fa;
+      font-weight: 700;
+    }
+
+    .note {
+      padding: 14px 16px;
+      border-left: 4px solid var(--blue-strong);
+      background: #f5f9ff;
+      border-radius: 12px;
+      color: #334155;
+    }
+
+    .grid {
+      display: grid;
+      gap: 14px;
+    }
+
+    .grid.cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid.cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
+    .card {
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: 15px;
+      background: #fff;
+    }
+
+    .card h3 {
+      margin-top: 0;
+    }
+
+    .core {
+      background: var(--blue);
+      border-color: #b9daf9;
+    }
+
+    .soul {
+      background: var(--orange);
+      border-color: #ffd2a6;
+    }
+
+    .gateway {
+      background: var(--green);
+      border-color: #bfe9cd;
+    }
+
+    .runtime {
+      background: var(--purple);
+      border-color: #d8ccff;
+    }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 3px 9px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+    }
+
+    .tag.blue { color: var(--blue-strong); background: #edf6ff; }
+    .tag.orange { color: var(--orange-strong); background: #fff6ed; }
+    .tag.green { color: var(--green-strong); background: #eefbf3; }
+
+    .flow {
+      display: grid;
+      gap: 10px;
+      margin: 12px 0;
+    }
+
+    .flow-row {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(120px, 1fr));
+      gap: 10px;
+      align-items: stretch;
+    }
+
+    .box {
+      min-height: 76px;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: #fff;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .box strong { display: block; margin-bottom: 4px; }
+    .box small { color: var(--muted); line-height: 1.4; }
+
+    .arrow {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--muted);
+      font-weight: 700;
+    }
+
+    .lane {
+      display: grid;
+      grid-template-columns: 170px 1fr;
+      gap: 12px;
+      align-items: stretch;
+      margin: 12px 0;
+    }
+
+    .lane-label {
+      padding: 14px;
+      border-radius: 14px;
+      background: #eef2f8;
+      font-weight: 700;
+    }
+
+    .lane-body {
+      padding: 14px;
+      border-radius: 14px;
+      border: 1px solid var(--line);
+      background: #fff;
+    }
+
+    .checklist {
+      columns: 2;
+      padding-left: 20px;
+    }
+
+    .checklist li { break-inside: avoid; margin-bottom: 8px; }
+
+    @media (max-width: 900px) {
+      header { padding: 34px 24px 22px; }
+      main { padding: 18px; }
+      section { padding: 20px; }
+      .grid.cols-2, .grid.cols-3, .flow-row, .lane {
+        grid-template-columns: 1fr;
+      }
+      .arrow { display: none; }
+      .checklist { columns: 1; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Pinea / Piny 架构与接口总览</h1>
+    <p>
+      本文基于当前已落盘的架构、Gateway、ToB 接口与 ToC Piny 讨论整理而成。
+      目标是把系统边界、ToB 对外接口、ToC Soul 支撑逻辑和实现约束放在一张可阅读的说明里。
+    </p>
+  </header>
+
+  <main>
+    <section id="summary">
+      <h2>1. 一句话架构</h2>
+      <p>
+        <strong>Pinea Core</strong> 是可发 B 端的无头能力底座，包含模型网关、agent runtime、白盒记忆、工具、MCP、skills 与 workspace。
+        <strong>Piny toC</strong> 是 C 端专属灵魂层，在 Core 旁边增加感知、Soul、表达和 PineaState 总线，负责身体、关系和主动性。
+      </p>
+      <div class="grid cols-2">
+        <div class="card core">
+          <span class="tag blue">蓝色 / Core</span>
+          <h3>Pinea Core</h3>
+          <p>可无头部署，可发 B 端。只提供模型、agent、记忆、工具、skills、数据与安全边界，不包含认主、陪伴、灯带等 C 端灵魂逻辑。</p>
+        </div>
+        <div class="card soul">
+          <span class="tag orange">橙色 / Soul</span>
+          <h3>Piny 灵魂层</h3>
+          <p>C 端专属。负责感知事件、主人关系、主动时机、6 态状态机和多端表达，只通过契约调用 Core，不 import Core 内部模块。</p>
+        </div>
+      </div>
+      <div class="note">
+        红线：不改 PilotDeck 核心；Core 不 import 感知/表达/Soul；Studio 只依赖 gateway 契约；表达端只订阅状态，不自行判态。
+      </div>
+    </section>
+
+    <section id="big-picture">
+      <h2>2. 全景结构</h2>
+      <div class="flow">
+        <div class="flow-row">
+          <div class="box"><strong>使用方</strong><small>SI App / Studio / 桌伴 / Phone / 外设</small></div>
+          <div class="arrow">→</div>
+          <div class="box gateway"><strong>Pinea Model Gateway</strong><small>设备前门：OpenAI 兼容 + Agent + Skills 管理</small></div>
+          <div class="arrow">→</div>
+          <div class="box core"><strong>模型后端</strong><small>ollama / speaches / Piper / Kokoro / ComfyUI</small></div>
+        </div>
+        <div class="flow-row">
+          <div class="box soul"><strong>Piny 感知</strong><small>presence / voice / intent</small></div>
+          <div class="arrow">→</div>
+          <div class="box soul"><strong>PineaState</strong><small>presence / voice / intent / core.lifecycle / state</small></div>
+          <div class="arrow">→</div>
+          <div class="box soul"><strong>Soul + 表达</strong><small>Soul 写 state；灯带、TTS、桌伴、Phone 只渲染</small></div>
+        </div>
+        <div class="flow-row">
+          <div class="box gateway"><strong>模型线</strong><small>Runtime model.providers → Gateway → 模型后端</small></div>
+          <div class="arrow">→</div>
+          <div class="box runtime"><strong>Agent Runtime</strong><small>agent loop / memory / tools / MCP / skills / workspace</small></div>
+          <div class="arrow">→</div>
+          <div class="box soul"><strong>灵魂线</strong><small>submitTurn 触发回合；hook/WS 回流生命周期</small></div>
+        </div>
+      </div>
+
+      <h3>三条主线</h3>
+      <table>
+        <thead>
+          <tr><th>线</th><th>路径</th><th>意义</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>模型线</td>
+            <td><code>Runtime → model.providers → Gateway → OpenAI 端点 → 后端模型</code></td>
+            <td>Core 内部推理统一走 Gateway，便于路由、日志、发现、资源观察。</td>
+          </tr>
+          <tr>
+            <td>ToB 线</td>
+            <td><code>SI App → Gateway → ① 能力面 / ② Agent 面 / ③ Skills 管理</code></td>
+            <td>SI 优先跑在盒子本机，通过 <code>127.0.0.1</code> 使用设备能力。</td>
+          </tr>
+          <tr>
+            <td>灵魂线</td>
+            <td><code>感知 → PineaState → Soul → submitTurn → Core → core.lifecycle → Soul → state → 表达</code></td>
+            <td>ToC Piny 的身体、关系、主动性和表达闭环。</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="tob">
+      <h2>3. ToB 架构：本机设备前门</h2>
+      <p>
+        当前 ToB 不是云端 API 服务，而是卖一台装好 Pinea Core 的松果派设备。
+        SI App / 容器优先部署在盒子本机，经 <code>127.0.0.1:18800</code> 调 Pinea Model Gateway。
+        如需绑定 LAN/WAN，必须开启 Bearer Token。
+      </p>
+
+      <div class="lane">
+        <div class="lane-label">SI 集成</div>
+        <div class="lane-body"><code>SI App / 容器 → localhost → Pinea Model Gateway</code>。业务登录、最终用户权限、行业权限由 SI App 自己负责。</div>
+      </div>
+      <div class="lane">
+        <div class="lane-label">设备门锁</div>
+        <div class="lane-body"><code>Authorization: Bearer &lt;token&gt;</code>。本机封闭部署可关闭；绑定 LAN/WAN 时 <code>PINEA_API_KEY</code> 必填，否则 Gateway 拒绝启动。</div>
+      </div>
+      <div class="lane">
+        <div class="lane-label">非目标</div>
+        <div class="lane-body">MVP 不做多租户、商业计费、配额、购买范围控制。<code>usage</code> 只用于本机观测、排障和资源仲裁。</div>
+      </div>
+
+      <h3>三类 ToB 接口</h3>
+      <table>
+        <thead>
+          <tr><th>类</th><th>卖什么</th><th>入口</th><th>状态</th><th>实现落点</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>① 能力面</td>
+            <td>算力 + 多模态</td>
+            <td><code>/v1/chat</code>、<code>/v1/audio</code>、<code>/v1/images</code>、<code>/v1/video</code>、<code>/v1/embeddings</code></td>
+            <td>无状态</td>
+            <td>Gateway → 模型后端 adapter</td>
+          </tr>
+          <tr>
+            <td>② Agent 面</td>
+            <td>开箱即用 agent</td>
+            <td><code>/v1/agent/*</code> + <code>X-Session-Id</code></td>
+            <td>有状态</td>
+            <td>Gateway → Runtime <code>api_server</code></td>
+          </tr>
+          <tr>
+            <td>③ Skills</td>
+            <td>可复用行业能力</td>
+            <td><code>/v1/skills/*</code></td>
+            <td>管理面</td>
+            <td>Gateway 管理接口 → runtime skill 目录 → agent 自动触发</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="toc">
+      <h2>4. ToC Piny：Soul 如何支撑</h2>
+      <p>
+        ToC Piny 不重做 agent runtime。它复用 Core 的 agent、memory、tools 和 skills，在旁边增加一套 C 端专属的 Soul 系统。
+        Soul 的职责是判断人、关系、时机、打扰边界和表达状态。
+      </p>
+
+      <div class="flow">
+        <div class="flow-row">
+          <div class="box soul"><strong>输入端</strong><small>桌伴 / Studio / Phone / 外设 / 麦克风 / 摄像头</small></div>
+          <div class="arrow">→</div>
+          <div class="box soul"><strong>感知</strong><small>VAD / motion / ASR / 视觉理解 / 认主</small></div>
+          <div class="arrow">→</div>
+          <div class="box soul"><strong>PineaState</strong><small>事件总线，承载 presence、voice、intent</small></div>
+        </div>
+        <div class="flow-row">
+          <div class="box soul"><strong>Soul</strong><small>读事件和私有记忆，判断是否主动、是否触发 Core</small></div>
+          <div class="arrow">→</div>
+          <div class="box runtime"><strong>Core Agent</strong><small>执行复杂任务、工具、skills、白盒记忆</small></div>
+          <div class="arrow">→</div>
+          <div class="box soul"><strong>表达</strong><small>只订阅 state：灯带 / TTS / 桌伴 / Phone / Studio</small></div>
+        </div>
+      </div>
+
+      <h3>Soul 的唯一状态机</h3>
+      <table>
+        <thead>
+          <tr><th>状态</th><th>含义</th><th>典型表达</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>idle</code></td><td>空闲，等待事件</td><td>低亮度或待机</td></tr>
+          <tr><td><code>listening</code></td><td>正在听用户说话</td><td>收音灯效、录音提示</td></tr>
+          <tr><td><code>thinking</code></td><td>Core 正在推理或规划</td><td>思考动效</td></tr>
+          <tr><td><code>speaking</code></td><td>正在播报或输出</td><td>TTS、字幕、桌伴口型</td></tr>
+          <tr><td><code>working</code></td><td>正在执行工具或长任务</td><td>任务进度、工具执行提示</td></tr>
+          <tr><td><code>error</code></td><td>失败或需要用户介入</td><td>错误提示、降级表达</td></tr>
+        </tbody>
+      </table>
+
+      <div class="note">
+        关键约束：只有 Soul 状态机可以写最终 <code>state</code>。表达层、Studio、桌伴、Phone、外设都只能订阅并渲染，不能自行判断当前应当是什么状态。
+      </div>
+    </section>
+
+    <section id="processes">
+      <h2>5. 进程与运行边界</h2>
+      <table>
+        <thead>
+          <tr><th>进程</th><th>职责</th><th>边界</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>P1 Pinea Model Gateway</td>
+            <td>FastAPI 设备前门，OpenAI 兼容端点、Agent 转发、Skills 管理、发现、健康、日志。</td>
+            <td>Python；只路由和归一，不做推理。</td>
+          </tr>
+          <tr>
+            <td>P2 Agent Runtime</td>
+            <td>agent loop、白盒记忆、tools/MCP、skills、workspace、智能路由。</td>
+            <td>当前实现 PilotDeck；只走扩展点，不改核心。</td>
+          </tr>
+          <tr>
+            <td>P3 感知服务</td>
+            <td>采集和归一 presence、voice、intent 事件。</td>
+            <td>不直接驱动表达，不直接改 Core memory。</td>
+          </tr>
+          <tr>
+            <td>P4 Soul 服务</td>
+            <td>消费感知和 core.lifecycle，判断主动时机，必要时 submitTurn，写唯一 state。</td>
+            <td>C 端专属，不进入 Core。</td>
+          </tr>
+          <tr>
+            <td>P5 表达服务</td>
+            <td>订阅 state，渲染灯带、TTS、桌伴、Studio、Phone 和外设反馈。</td>
+            <td>无状态决策权，只做渲染。</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="interfaces">
+      <h2>6. 对外接口</h2>
+
+      <h3>6.1 共用约定</h3>
+      <table>
+        <thead>
+          <tr><th>项目</th><th>约定</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Base URL</td><td><code>http://&lt;host&gt;:18800</code>，默认绑定 <code>127.0.0.1</code>。</td></tr>
+          <tr><td>鉴权/门锁</td><td><code>Authorization: Bearer &lt;token&gt;</code>。本机封闭可关闭，外放必须开启。</td></tr>
+          <tr><td>发现</td><td><code>GET /v1/capabilities</code> 返回模态、agent、skills 可用性。</td></tr>
+          <tr><td>模型</td><td><code>GET /v1/models</code> 聚合后端模型列表。</td></tr>
+          <tr><td>健康</td><td><code>GET /healthz</code> 聚合后端健康状态。</td></tr>
+          <tr><td>错误形状</td><td>OpenAI 风格：<code>{ "error": { "message", "type", "code" } }</code>。</td></tr>
+        </tbody>
+      </table>
+
+      <h3>6.2 ① 能力面</h3>
+      <table>
+        <thead>
+          <tr><th>端点</th><th>能力</th><th>默认后端</th><th>说明</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>POST /v1/chat/completions</code></td><td>文本 / 工具 / 视觉</td><td>ollama</td><td>OpenAI Chat Completions 兼容；tool calling 已验证。</td></tr>
+          <tr><td><code>POST /v1/embeddings</code></td><td>向量</td><td>ollama</td><td>透传 nomic-embed 等 embedding 模型。</td></tr>
+          <tr><td><code>POST /v1/audio/transcriptions</code></td><td>STT</td><td>speaches / faster-whisper</td><td>MVP 首做；<code>multipart/form-data</code>。</td></tr>
+          <tr><td><code>POST /v1/audio/speech</code></td><td>TTS</td><td>Piper / Kokoro</td><td>表达层也可复用。</td></tr>
+          <tr><td><code>POST /v1/images/generations</code></td><td>生图</td><td>ComfyUI</td><td>adapter 把工作流封装成 OpenAI 风格响应。</td></tr>
+          <tr><td><code>POST /v1/video/generations</code></td><td>生视频</td><td>ComfyUI</td><td>自定义异步任务：submit → poll / webhook。</td></tr>
+        </tbody>
+      </table>
+
+      <h3>6.3 ② Agent 面</h3>
+      <table>
+        <thead>
+          <tr><th>端点</th><th>说明</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>POST /v1/agent/chat/completions</code></td>
+            <td>OpenAI Chat 兼容 + <code>X-Session-Id</code>。Gateway 内部翻译到 runtime session，一次请求由 agent 自己完成多步工具调用。</td>
+          </tr>
+          <tr>
+            <td><code>GET /v1/agent/sessions/{id}/messages</code></td>
+            <td>只读会话历史，供 UI 回放。</td>
+          </tr>
+          <tr>
+            <td><code>GET /v1/agent/sessions</code></td>
+            <td>列出会话。</td>
+          </tr>
+        </tbody>
+      </table>
+      <p>
+        同一 session 同时只允许一个进行中回合，并发返回 <code>429 rate_limit_error</code>。
+        默认 workspace 应配置到设备 ToB 工作区，例如 <code>/srv/pinea/workspaces/default</code>，不得暴露系统根目录。
+      </p>
+
+      <h3>6.4 ③ Skills 管理</h3>
+      <table>
+        <thead>
+          <tr><th>操作</th><th>端点</th><th>说明</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>列表</td><td><code>GET /v1/skills</code></td><td>返回已安装 skill、启停状态、描述。</td></tr>
+          <tr><td>安装</td><td><code>POST /v1/skills/install</code></td><td>上传 zip/tar 或提交 local_path；校验 <code>SKILL.md</code> 后落盘。</td></tr>
+          <tr><td>读取</td><td><code>GET /v1/skills/{name}</code></td><td>读取 <code>SKILL.md</code> 与元信息。</td></tr>
+          <tr><td>启用</td><td><code>POST /v1/skills/{name}/enable</code></td><td>允许 agent 自动触发。</td></tr>
+          <tr><td>禁用</td><td><code>POST /v1/skills/{name}/disable</code></td><td>保留文件但不触发。</td></tr>
+          <tr><td>删除</td><td><code>DELETE /v1/skills/{name}</code></td><td>移除 skill，需保持 registry 和磁盘一致。</td></tr>
+          <tr><td>扫描</td><td><code>POST /v1/skills/scan</code></td><td>调试/装配时重新扫描底层目录。</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="schemas">
+      <h2>7. 关键数据形状</h2>
+
+      <h3>PineaState 事件</h3>
+      <pre>{
+  "type": "presence|voice|intent|core.lifecycle|state",
+  "ts": 0,
+  "source": "mic|camera|pilotdeck|soul",
+  "payload": {},
+  "confidence": 0.0
+}</pre>
+
+      <h3>能力发现</h3>
+      <pre>{
+  "object": "capabilities",
+  "modalities": {
+    "chat": { "available": true, "models": ["gpt-oss:20b"] },
+    "vision": { "available": true, "models": ["minicpm-v"] },
+    "transcription": { "available": true, "models": ["whisper-medium"] },
+    "image": { "available": false },
+    "video": { "available": false }
+  },
+  "agent": { "available": true },
+  "skills": [{ "name": "audio-archive", "description": "..." }]
+}</pre>
+
+      <h3>Skill 安装请求</h3>
+      <pre>{
+  "source": {
+    "type": "local_path",
+    "path": "/opt/pinea/skills/audio-archive"
+  },
+  "enabled": true
+}</pre>
+    </section>
+
+    <section id="security-resource">
+      <h2>8. 安全、观测与资源仲裁</h2>
+      <div class="grid cols-3">
+        <div class="card">
+          <h3>安全门锁</h3>
+          <p>默认 <code>PINEA_HOST=127.0.0.1</code>。绑定到 <code>0.0.0.0</code>、LAN IP 或公网时，<code>PINEA_API_KEY</code> 必填。</p>
+        </div>
+        <div class="card">
+          <h3>观测日志</h3>
+          <p>每请求记录 caller、capability、backend、usage、latency。MVP 不承载商业计费语义。</p>
+        </div>
+        <div class="card">
+          <h3>资源仲裁</h3>
+          <p>chat/embedding 常驻；STT/TTS 优先 CPU/小显存；生图/视频/vllm-omni 等重后端默认排队或按需起停。</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="implementation">
+      <h2>9. 实现落地检查表</h2>
+      <ul class="checklist">
+        <li>Gateway 默认只监听 <code>127.0.0.1</code>。</li>
+        <li>Gateway 外放时必须配置 Bearer Token。</li>
+        <li>三类 ToB 共用 <code>/v1/capabilities</code>、错误形状和 usage 日志。</li>
+        <li>能力面 adapter 只做 schema 归一，不做推理。</li>
+        <li>Agent 面只转发到 runtime <code>api_server</code>，不绕过 runtime 权限。</li>
+        <li>Skill 通过接口安装、启停、删除，磁盘目录是内部实现细节。</li>
+        <li>Skill 只依赖 Gateway 能力端点和 runtime skill/tool 契约，绝不依赖 Soul。</li>
+        <li>PineaState 承载 <code>presence</code>、<code>voice</code>、<code>intent</code>、<code>core.lifecycle</code>、<code>state</code>。</li>
+        <li>只有 Soul 状态机可以写最终 <code>state</code>。</li>
+        <li>表达层只订阅 <code>state</code>，不自行判断状态。</li>
+        <li>Core 不 import 感知、表达或 Soul。</li>
+        <li>不修改 <code>vendor/pilotdeck</code> 核心代码。</li>
+      </ul>
+    </section>
+
+    <section id="references">
+      <h2>10. 源文档</h2>
+      <p>本 HTML 是汇总文档，详细契约仍以以下 Markdown 为准：</p>
+      <ul>
+        <li><a href="./architecture.md">docs/architecture.md</a></li>
+        <li><a href="./model-gateway.md">docs/model-gateway.md</a></li>
+        <li><a href="./interfaces/tob-overview.md">docs/interfaces/tob-overview.md</a></li>
+        <li><a href="./interfaces/capability-api.md">docs/interfaces/capability-api.md</a></li>
+        <li><a href="./interfaces/agent-api.md">docs/interfaces/agent-api.md</a></li>
+        <li><a href="./interfaces/skill-contract.md">docs/interfaces/skill-contract.md</a></li>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>

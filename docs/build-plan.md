@@ -52,12 +52,12 @@
 ## ToB 并行线（🔵Core，不依赖灵魂，可同时推进）
 
 > 契约见 `interfaces/capability-api.md`（①能力面）+ `interfaces/agent-api.md`（②Agent面）+ `interfaces/skill-contract.md`（③公共 skill）。设计见 `model-gateway.md`。
-> 三类 ToB 共用 Model Gateway 单一前门。
+> 三类 ToB 共用 Model Gateway 设备前门（默认本机，外放需 Bearer Token）。
 
-- **T0 网关骨架 + chat 透传（①）**：FastAPI 起 `/v1/chat/completions` → ollama；PilotDeck `model.providers` 指过来，回归 tool-calling spike 不掉。**通过标准**：经网关跑通带工具的多步任务。
+- **T0 网关骨架 + chat 透传（①）✅ 已过**：FastAPI（`gateway/`，:18800）起 `/v1/chat/completions`→ollama；PilotDeck `model.providers` 指过来。**通过标准**：经网关跑通带工具的多步任务。→ **已达成：经网关 tool-calling 19/20**（唯一失败是模型读了文件没走写入步，非网关弄坏 tool_calls；conformance `gateway/tests/` 6/6 绿）。
 - **T1 STT 端点（①）**：`/v1/audio/transcriptions` → speaches；见 `../research/spikes/stt-gateway.md`。**通过标准**：中文 ~1min 音频转写可用、RTF≤0.5。
-- **T2 Agent 面（②）**：网关 `/v1/agent/chat/completions` 转发 PilotDeck api_server，`X-Session-Id` 翻译 + 计量标 internal。**通过标准**：带 session 多轮、agent 自用工具多步、内部回环不重复计量。
-- **T3 「音频资料整理」skill（③）**：磁盘 skill，调网关 STT → 去重/打标/归档入记忆。第一个公共行业 skill。**通过标准**：丢一批录音 → 自动转写归档、可被记忆复用。
+- **T2 Agent 面（②）**：网关 `/v1/agent/chat/completions` 转发 PilotDeck api_server，`X-Session-Id` 翻译 + usage 日志 + 默认 ToB workspace。**通过标准**：带 session 多轮、agent 自用工具多步、同 session 并发 429、内部回打 ① 属于同设备模型线调用，日志可观测且不引入商业计费语义。
+- **T3 「音频资料整理」skill（③）**：Skill 包经 `/v1/skills/*` 管理接口安装，内部落 runtime skill 目录，调网关 STT → 去重/打标/归档入记忆。第一个公共行业 skill。**通过标准**：local_path/zip 安装都可校验 `SKILL.md`，启停状态进 registry，丢一批录音 → 自动转写归档、可被记忆复用。
 - **T4 按需扩模态（①）**：TTS → 生图 → 视频（异步）；盒子选型见 `../research/spikes/vllm-omni-box.md`。
 
 并行约定：每个能力先用 **mock 后端**立契约，SI/skill 同时对接，真模型后置替换（契约不变）。

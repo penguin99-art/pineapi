@@ -2,13 +2,13 @@
 
 > 配套：设计见 `../model-gateway.md`，总览见 `README.md`，有状态 agent 见 `agent-api.md`。
 > 这是 **ToB 第一类接口（无状态模型能力）**——SI 集成方照此对接，PilotDeck 也经 `model.providers` 消费同一份。
-> Pinea Model Gateway 是**三类 ToB 的唯一对外前门**：① 无状态模型能力（本文）、② 有状态 Agent 面（`agent-api.md`，路径 `/v1/agent/*`）、③ Skills（`skill-contract.md`）。三类同 base_url、同 key、同发现/计量。
+> Pinea Model Gateway 是**三类 ToB 的设备前门**：① 无状态模型能力（本文）、② 有状态 Agent 面（`agent-api.md`，路径 `/v1/agent/*`）、③ Skills 管理（`skill-contract.md`）。三类同一设备 base_url，同一安全门锁，同一发现/日志。
 > **稳定性**：对外契约，破坏性变更走版本（见 §版本）。当前 = `v1`（draft，未冻结）。
 
 ## 0. 约定
 
-- **Base URL**：`http://<host>:<port>`（默认 `:8080`，待定）。所有端点前缀 `/v1`。这是三类 ToB 的统一前门。
-- **鉴权**：`Authorization: Bearer <key>`。一个客户一个 key，key 标了买了哪几类（① / ② / ③）。MVP 单 key；多租户后置（见 `../model-gateway.md` §6）。
+- **Base URL**：`http://<host>:<port>`（本项目默认 `:18800`，`:8080` 本机已被占；默认绑定 `127.0.0.1`）。所有端点前缀 `/v1`。这是三类 ToB 的设备前门。
+- **安全门锁**：`Authorization: Bearer <token>`。本机封闭部署可关闭；只要 Gateway 绑定到 LAN/WAN 就必须开启。Token 不表达 ①/②/③ 购买范围，不做多租户/计费/配额。实现上：`PINEA_HOST` 默认 `127.0.0.1`；当 `PINEA_HOST` 不是 `127.0.0.1`/`localhost`/`::1` 时，`PINEA_API_KEY` 必填，否则 Gateway 拒绝启动。
 - **内容类型**：JSON 端点 `application/json`；音频上传 `multipart/form-data`。
 - **错误形状**（OpenAI 风格，全端点统一）：
 
@@ -105,17 +105,19 @@ OpenAI 无此标准。视频生成慢 → **异步任务**：
 
 - `modalities.*` = ① 能力面各模态可用性 + 模型；`available:false` 表示这台盒子没挂该后端。
 - `agent.available` = ② Agent 面（`agent-api.md`）是否开启。
-- `skills[]` = ③ 已装公共 skill（同 `GET /v1/skills`）。
-- 受 key 作用域过滤：只回该 key 买了的类别。
+- `skills[]` = ③ 已装/已启用公共 skill（同 `GET /v1/skills`）。
+- 返回的是**这台设备当前可用能力**；不按商业 key 作用域过滤。未挂某后端时用 `available:false` 表示。
+
+后置可向 `modalities.*` 追加 `status: "idle|busy|warming|down"`、`queue_depth` 等资源状态字段，调用方必须忽略未知字段。
 
 ### `GET /v1/models` / `GET /healthz`
 
 - `GET /v1/models` → `{ "object":"list","data":[{"id","object":"model","owned_by","capabilities":["chat","tools","vision"]}] }`（跨后端聚合，每个 model 标自身 capability 标签）。
 - `GET /healthz` → `{ "status":"ok|degraded","backends":{"ollama":"ok","speaches":"down",...} }`。
 
-## 8. 用量（计量统一形状）
+## 8. 用量（观测统一形状）
 
-三类 ToB 用量写**同一条结构化日志**，响应里按模态回 `usage`，单位不同但形状统一：
+三类 ToB 用量写**同一条结构化日志**，响应里按模态回 `usage`，单位不同但形状统一。MVP 中 `usage` 用于本机观测、排障和资源仲裁，不作为多租户计费依据：
 
 | 模态 | `usage` 形状 |
 | --- | --- |
@@ -126,7 +128,7 @@ OpenAI 无此标准。视频生成慢 → **异步任务**：
 | 生视频（①） | `{ "type":"duration","seconds":N }`（产物时长） |
 | Agent 回合（②） | `{ "type":"agent_turn","turns":1,"total_tokens":N }`（见 `agent-api.md` §4） |
 
-> 计费 MVP 留桩（见 `../model-gateway.md` §6），但 `usage` 形状现在定死，后置接计费不破坏契约。
+> 商业计费/配额不在 MVP 范围；但 `usage` 形状现在定死，后置如需商业治理不破坏契约。
 
 ## 版本
 

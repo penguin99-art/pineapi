@@ -1,6 +1,7 @@
 # Pinea / Piny 装配配置 (PILOT_HOME=deploy/pilot-home)。
-# 模型层直连本机 ollama(OpenAI 兼容 :11434/v1)，去掉 LocalAI 代理层——隔离 tool-calling 解析问题。
-# 第 0 步 spike 期间关闭 router，用单模型保证确定性。
+# T0 起：模型层经 Pinea Model Gateway(:18800) 薄透传到 ollama —— 单一前门统一计量/日志，
+# 且 tool-calling 经网关回归不掉(见 gateway/README.md「T0 通过标准」)。provider 名仍叫 ollama，
+# 仅 url 指向网关；网关再转发到真 ollama(:11434)。第 0 步 spike 期间关闭 router，用单模型保证确定性。
 schemaVersion: 1
 gateway:
   # 默认 18789 被本机一个无关常驻 openclaw-gateway(/app, 已跑 32 天)占用，本项目用 18790。
@@ -12,7 +13,7 @@ model:
   providers:
     ollama:
       protocol: openai
-      url: http://localhost:11434/v1
+      url: http://localhost:18800/v1
       apiKey: ollama
       models:
         "gpt-oss:20b":

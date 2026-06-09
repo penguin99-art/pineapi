@@ -14,7 +14,7 @@
 | 状态 | **无状态**：每次传全量 `messages` | **有状态**：`X-Session-Id` 串上下文 + 白盒记忆 |
 | 工具 | 工具调用由调用方驱动多步 | **agent 自己用工具、自己多步循环**，一次请求出最终结果 |
 | 记忆 | 无 | 跨回合记忆（runtime 提供） |
-| 计量单位 | tokens | **agent 回合** |
+| 观测单位 | tokens | **agent 回合** |
 | 给谁 | 想自己搭 agent 的 SI | 想直接要"会记事会用工具的 agent"的 SI |
 
 一句话：① 给算力，② 给 agent。
@@ -27,7 +27,7 @@ OpenAI Chat Completions 兼容。与 ① 的差异只有两点：路径前缀 `/
 
 | 头 | 必填 | 说明 |
 | --- | --- | --- |
-| `Authorization: Bearer <key>` | ✓ | 同一客户 key（key 标了是否买了 Agent 面） |
+| `Authorization: Bearer <token>` | 视部署而定 | Gateway 安全门锁；本机封闭部署可关闭，绑定 LAN/WAN 时必填 |
 | `X-Session-Id: <id>` | | 会话标识；缺省自动生成并在响应头回带。同 id 串接上下文 + 记忆 |
 
 > 网关内部把 `X-Session-Id` 翻译成 runtime 的 `X-Hermes-Session-Id`——**B 端永远不感知底层是不是 PilotDeck**（呼应 runtime 可换）。
@@ -67,11 +67,18 @@ SSE，对齐 OpenAI `chat.completion.chunk` + 结尾 `data: [DONE]`。
 
 > 会话读 API 映射到 `runtime-contract.md` §契约四（gateway SDK 数据面）。换 runtime 要求提供等价的会话只读能力。
 
-## 4. 计量与双重计费规避
+### 默认 workspace / 权限边界
 
-- ② 的计量单位 = **agent 回合**（一次 `/v1/agent/chat/completions` 完成算一回合，附 `turn_completed.usage` 里的 token 汇总）。
-- ② 内部 agent 经 `model.providers` **回打 ① 网关**做推理：这些回环调用带 **internal 标记**（内部头/key），**只计 ② 的回合，不在 ① 侧重复计 tokens**。
-- 用量写**同一条结构化用量日志**（与 ①③ 统一，见 `capability-api.md` §用量）。
+- `X-Session-Id` 缺省时由 Gateway 生成并在响应头回带；SI App 应为每个最终用户/业务对象维护稳定 session。
+- Gateway 为 ② Agent 面配置一个设备级 ToB 工作区（部署时配置，建议类似 `/srv/pinea/workspaces/default`），不得把系统根目录暴露给 agent。
+- 同一 session 同时只允许一个进行中回合；并发返回 `429`。
+- Agent 可用的工具/MCP/Skills 由 runtime 配置决定；Gateway 只转发回合，不绕过 runtime 权限模型。
+
+## 4. 用量与内部回打
+
+- ② 的观测单位 = **agent 回合**（一次 `/v1/agent/chat/completions` 完成算一回合，附 `turn_completed.usage` 里的 token 汇总）。
+- ② 内部 agent 经 `model.providers` **回打 ① 网关**做推理；这是同一台设备内的模型线调用，不引入额外商业计费语义。
+- 用量写**同一条结构化用量日志**（与 ①③ 统一，见 `capability-api.md` §用量），用于本机观测、排障和资源仲裁。
 
 ## 5. 错误
 
@@ -82,7 +89,7 @@ OpenAI 风格，与 ① 统一：
 ```
 
 - session 冲突（并发回合）→ `429`，`type: rate_limit_error`。
-- 未购买 Agent 面的 key 打 `/v1/agent/*` → `403`。
+- Gateway 安全门锁开启且 token 缺失/错误 → `401` 或 `403`。
 
 ## 6. 版本
 
@@ -93,4 +100,4 @@ OpenAI 风格，与 ① 统一：
 ## 7. 给对接方的并行约定
 
 - **先 mock**：Agent 面可先用一个"回固定多步结果 + 假 session"的 mock 立起来，SI 即可对 UI；真 runtime 后置接入，契约不变。
-- SI 选 ① 还是 ②：要最大自由度自己搭 agent → 用 ①；要开箱即用的 agent → 用 ②。两者同 key、同前门，可混用。
+- SI 选 ① 还是 ②：要最大自由度自己搭 agent → 用 ①；要开箱即用的 agent → 用 ②。两者同一设备前门，可混用。
