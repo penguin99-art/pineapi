@@ -10,13 +10,13 @@ Piny 是一台本地常驻的个人 AI 节点。技术上分两层：
 - **🔵 Pinea Core（无头）**：执行 / 记忆 / 数据 / 安全 / SDK。**直接复用 PilotDeck**（自有开源产品）。B 端集成商也复用这一层。
 - **🟠 Piny 灵魂层（C 端专属）**：感知（认主）/ 表达（灯带·voice）/ soul（主动的时机）。**自研**，通过扩展点挂进 Core，不进 Core。
 
-模型层 = 自研 **Pinea Model Gateway**（OpenAI 兼容能力面：chat→ollama / STT / TTS / 生图 / 视频；详见 `docs/model-gateway.md`）。LocalAI 已弃用。
+模型层 = 自研 **Pinea Model Gateway**（OpenAI 兼容单一前门：chat→ollama / STT / TTS / 生图 / 视频；详见 `docs/model-gateway.md`）。LocalAI 已弃用。
 
 ## 怎么做（核心判断）
 
 **不从零搭 Core。PilotDeck 的 `src/` 就是 🔵Core 的现成实现。** 我们只做三件事：
 
-1. 起模型层：ollama（文本，已验）+ 自研 Pinea Model Gateway（多模态能力面）。
+1. 起模型层：ollama（文本，已验）+ 自研 Pinea Model Gateway（多模态单一前门）。
 2. 自研 🟠灵魂层（感知 / 表达）。
 3. 在两个接缝把灵魂层接进去，**不改 PilotDeck 核心**。
 

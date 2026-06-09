@@ -1,7 +1,8 @@
-# Pinea Model Gateway（能力面 · L2）
+# Pinea Model Gateway（单一前门 · L2）
 
-> 配套：架构见 `architecture.md`，原则见 `../AGENTS.md`，融合见 `pilotdeck-integration.md`。
-> 定位：🔵Core 的模型层（L2）。无头、可发 B 端。**替代 LocalAI 作为"门面"**（LocalAI 已弃用）。
+> 配套：架构见 `architecture.md`，原则见 `../AGENTS.md`，融合见 `pilotdeck-integration.md`，对外入口见 `interfaces/tob-overview.md`。
+> 定位：🔵Core 的模型层（L2），三类 ToB 的**单一前门**。无头、可发 B 端。**替代 LocalAI 作为"门面"**（LocalAI 已弃用）。
+> 术语：**"网关/单一前门" = 整个本服务**；**"能力面" 专指 ①**（无状态模型层），勿混。
 
 ## 1. 为什么自研网关（弃用 LocalAI 当门面）
 

@@ -1,6 +1,6 @@
 # 接口契约总览（各层之间怎么对接）
 
-> 配套：架构见 `../architecture.md`，能力面见 `../model-gateway.md`，原则见 `../../AGENTS.md`。
+> 配套：架构见 `../architecture.md`，网关设计见 `../model-gateway.md`，原则见 `../../AGENTS.md`。
 > **只看对外 ToB？** → 直接读 [`tob-overview.md`](tob-overview.md)（按层次汇总的三类 ToB 入口）。
 > 目的：把每层之间的接口**先定死成契约**，让各层（含 ToB）照契约**并行开发、互不阻塞**（AGENTS §3「假数据先行」「每步可独立验证」）。
 

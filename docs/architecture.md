@@ -1,6 +1,7 @@
 # 架构
 
-> 配套：原则见 `../AGENTS.md`，搭建顺序见 `build-plan.md`，融合见 `pilotdeck-integration.md`，能力面见 `model-gateway.md`，**各层接口契约见 `interfaces/`**。
+> 配套：原则见 `../AGENTS.md`，搭建顺序见 `build-plan.md`，融合见 `pilotdeck-integration.md`，网关设计见 `model-gateway.md`，对外 ToB 入口见 `interfaces/tob-overview.md`，**各层接口契约见 `interfaces/`**。
+> 术语：**"网关/单一前门" = 整个 Pinea Model Gateway（承载三类 ToB）**；**"能力面" 专指 ①（无状态模型层）**，勿混。
 
 ## 0. 全景图（整图）
 
@@ -28,10 +29,10 @@
 ║   │ ComfyUI  生图/视频            │   ║         │          ▼               │
 ║   │ (任一腿可换 vllm-omni,按盒子)  │   ║         │   ╔══════════════════════╪═════════╗
 ║   └──────────────────────────────┘   ║         │   ║  PineaState 总线 (灵魂线)          ║
-╚════════════════▲═════════════════════╝         │   ║  presence|voice|intent|state      ║
-                 │ OpenAI 端点(模型线)            │   ╚══════▲═══════════════╪═══════════╝
-                 │                                │          │接缝1 inbound  │接缝2 outbound
-                 │                                │          │(submitTurn)   │(hook/WS事件)
+╚═══════════▲══════════╪═══════════════╝         │   ║  presence|voice|intent|state      ║
+   ①model.providers    │②/v1/agent 转发           │   ╚══════▲═══════════════╪═══════════╝
+   (模型线,Runtime→网关)│(网关→api_server,有状态)   │          │接缝1 inbound  │接缝2 outbound
+                 │      ▼                          │          │(submitTurn)   │(hook/WS事件)
 ╔════════════════╧════════════════════════════════╧══════════╧═══════════════╧═══════════╗
 ║ 🔵 L3 记忆 + L4 执行 = Agent Runtime 层  (当前实现: PilotDeck · submodule 锁版只读 · 可换) ║
 ║   agent loop · 工具/MCP · Skill/Workflow · 智能路由 · 白盒记忆(可看/改/回滚·WorkSpace隔离)  ║
@@ -59,6 +60,11 @@ ToB:     SI ─► Model Gateway(单一前门) ─┬ ①/v1/chat… (无状态,
 
 > **Agent Runtime 是一层、可换**：L3/L4 当前用 PilotDeck，但自研件只依赖它的*契约/扩展点*（`model.providers` / api_server channel / 磁盘 hook / gateway SDK），**从不 import 其内部模块**。所以 runtime 是一个被抽象掉的可替换层——换掉 PilotDeck 只需重接这几个扩展点，🟠 灵魂层、🔵 能力面、Studio 全不动。这正是红线 1/5 的副产物。
 
+> **预留：agent-native 调用（未来，非 MVP）**。现在三类 ToB 是"给人类开发者的 API 方言"。将来让**别的 agent 自己发现、自己派活**（agent 网络）= 在单一前门**再挂两个协议适配头**，agent 核（②+③）不变：
+> - **MCP 头**：把 ①②③ 暴露成 MCP server，宿主 agent（Cursor/Claude 等）拿这台盒子当工具箱。最便宜的第一个 agent-native 赢。
+> - **A2A 头**：发布 **Agent Card**（`/.well-known/agent-card.json`，skills 取自 ③、capabilities 取自 `/v1/capabilities`，可自动生成）+ 任务协议；复用 L1 的 **mDNS** 让局域网内盒子/agent 互相**发现并承接**。反向"委派给远端 agent"= runtime 的 tool/MCP 扩展点，零改核心。
+> 架构在此**预留"前门协议适配器"格位**；具体实现待 spike（`research/spikes/agent-native.md`，未立），风险前置原则下先做网关本体。
+
 ## 1. 两层
 
 ```
@@ -81,28 +87,30 @@ ToB:     SI ─► Model Gateway(单一前门) ─┬ ①/v1/chat… (无状态,
 | --- | --- | --- |
 | L0 硬件 | 盒子 / 麦阵列 / 摄像头 / 灯带 / 传感器 | 自研硬件 |
 | L1 系统 | OS + GPU 调度 + 设备 adapter + LAN/mDNS + 物理开关 | 标准件 + 自研 |
-| L2 模型 | **Pinea Model Gateway**（OpenAI 兼容能力面：chat→ollama / STT / TTS / 生图 / 视频）+ MiniCPM/Qwen/gpt-oss（LocalAI 已弃用） | 自研薄网关 + 复用后端（详见 `model-gateway.md`） |
+| L2 模型 | **Pinea Model Gateway**（OpenAI 兼容单一前门：chat→ollama / STT / TTS / 生图 / 视频）+ MiniCPM/Qwen/gpt-oss（LocalAI 已弃用） | 自研薄网关 + 复用后端（详见 `model-gateway.md`） |
 | L3 记忆 | 白盒记忆（可看/改/回滚/WorkSpace 隔离）— 当前由 runtime 提供 | 自有护城河 |
 | L4 执行 | **Agent Runtime**（agent loop / 工具 / Skill / Workflow / 智能路由 / Always-on）；当前实现 = PilotDeck，**可换** | 复用·可替换层 |
 | L5 感知·表达 | VAD/MiniCPM-o/认脸 + 灯带/voice/PineaState | **自研（灵魂）** |
 | L6 交互面 | Studio / 桌伴 / Phone / 外设 | 自研 + 复用 channel |
 | L7 应用 | 资料 / 创作 / 家庭 / 行业 Workflow | 自研 + 生态 |
 
-L3/L4 = Agent Runtime 层（当前实现 PilotDeck，只依赖契约故可换），L5 自研——L5 是 Piny 区别于"装应用的私有云"的灵魂，结构上别人没有。L2 自研薄网关（只路由+归一+治理，不做推理），是对外卖的「能力面」ToB 接口；推理后端仍复用 ollama/whisper/comfy 等。
+L3/L4 = Agent Runtime 层（当前实现 PilotDeck，只依赖契约故可换），L5 自研——L5 是 Piny 区别于"装应用的私有云"的灵魂，结构上别人没有。L2 自研薄网关（只路由+归一+治理，不做推理），是三类 ToB 的**单一前门**（① 能力面 / ② Agent 面 / ③ Skills）；推理后端仍复用 ollama/whisper/comfy 等。
 
 ## 3. 四进程 + 一总线
 
+> 进程用 `P1~P4` 编号，避免与 §0 的 ToB 三类 `①②③` 混淆。
+
 ```
-① Pinea Model Gateway 能力面,Python/FastAPI  OpenAI 兼容端点(chat→ollama/STT/TTS/生图/视频)
-② PilotDeck Gateway   核心,TS/Node           agent/记忆/路由/任务（gateway 默认 :18789，本项目 18790；web UI :3001）
-③ 感知服务             Python                       发 presence/voice 事件
-④ 表达服务             任意                         收 state,渲染灯带/TTS
-        ③④ 经 ──► PineaState 总线 ◄── 互联
-   Studio / 桌伴 ──► ② Gateway(WS/HTTP)
-   SI 集成方   ──► ① Model Gateway(单一前门,ToB 三类: 能力面/Agent面/Skills)
+P1 Pinea Model Gateway  Python/FastAPI  单一前门;OpenAI 兼容端点(chat→ollama/STT/TTS/生图/视频)
+P2 PilotDeck Gateway    核心,TS/Node    agent/记忆/路由/任务（gateway 默认 :18789，本项目 18790；web UI :3001）
+P3 感知服务             Python          发 presence/voice 事件
+P4 表达服务             任意            收 state,渲染灯带/TTS
+        P3 P4 经 ──► PineaState 总线 ◄── 互联
+   Studio / 桌伴 ──► P2 PilotDeck Gateway(WS/HTTP)
+   SI 集成方   ──► P1 Model Gateway(单一前门,ToB 三类: ①能力面/②Agent面/③Skills)
 ```
 
-两条连接线：**模型线**（②→① OpenAI 端点；SI 也直接打 ①）、**灵魂线**（③④ 总线 + ② `submitTurn`）。①详见 `model-gateway.md`。
+两条连接线：**模型线**（P2 ─model.providers→ P1 OpenAI 端点；SI 也直接打 P1）、**灵魂线**（P3 P4 经总线 + P2 `submitTurn`）。P1 详见 `model-gateway.md`。
 
 ## 4. 两个接缝（集成命门）
 
