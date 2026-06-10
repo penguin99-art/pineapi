@@ -22,7 +22,7 @@
 
 ## 三类边界，三种稳定性
 
-1. **对外契约（ToB，最稳）**：能力面 API + Agent 面 API + 公共 Skill 契约。一旦发出去给 SI，破坏性变更要走版本。`capability-api.md` / `agent-api.md` 标了 stability，OpenAI 兼容子集承诺永不破。
+1. **对外契约（ToB，最稳）**：能力面 API + Agent 面 API + 公共 Skill 契约。**`v1.0` 已冻结（2026-06-10）**——形状是开发权威基线，破坏走版本。每端点的稳定性档位（Stable·承诺 / Stable·自定义 / Reserved）+ 实现状态（已实现/排期/需上游）见 [`tob-overview.md`](tob-overview.md) §7 矩阵。OpenAI 兼容子集承诺永不破。
 2. **对内可换契约**：Runtime 契约。我们只依赖 PilotDeck 的*扩展点*（不 import 内部），所以换 runtime = 重接这几个契约。
 3. **自研内部总线**：PineaState。我们自己定，但两端（感知/表达）靠它解耦并行。
 

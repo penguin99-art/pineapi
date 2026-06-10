@@ -2,6 +2,7 @@
 
 > 配套：架构见 `../architecture.md` §8，能力面见 `capability-api.md`，Agent 面见 `agent-api.md`，总览见 `README.md`。
 > 这是 **ToB 第三类接口**——把行业流程做成可复用 skill，跑在 ② Agent 面之上，发 B 端。
+> **稳定性**：`v1.0` 已冻结（2026-06-10）。`SKILL.md` 格式 + `/v1/skills/*` 管理面为 Stable·自定义契约；实现排期 T3（见 `tob-overview.md` §7）。`SKILL.md` 对齐 Anthropic 开放 Agent Skills 标准，故可移植。
 > 依据（PilotDeck 真实契约）：`vendor/pilotdeck/skills/*/SKILL.md`、`vendor/pilotdeck/src/extension/skills/types.ts`、gateway 的 `skillsList/skillRead/...` RPC（`src/gateway/protocol/types.ts`）。
 
 ## 0. 一句话

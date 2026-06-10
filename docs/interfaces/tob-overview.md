@@ -33,7 +33,7 @@ B 端开发者 / SI App ── 设备 base_url + 可选 Bearer Token ──► P
 - **错误 / 状态码 / 限额**：OpenAI 风格全端点统一，`type`↔HTTP 状态码映射与默认限额见 `capability-api.md` §0.2 / §0.3。
 - **OpenAI 兼容边界**：我们是 OpenAI **超集**而非逐字镜像，哪些镜像/哪些是 Pinea 扩展见 `capability-api.md` §9。
 - **观测日志**：三类写**同一条结构化用量日志**，单位不同形状统一（见 `capability-api.md` §8）。MVP 不做多租户/计费/配额，`usage` 先用于本机观测与排障。
-- **稳定性**：均为对外契约，破坏性变更走版本（`v1`→`v2` + 弃用周期）。**OpenAI 兼容子集承诺永不破**。当前 `v1` draft 未冻结。机读规格见 [`openapi.yaml`](openapi.yaml)。
+- **稳定性**：均为对外契约，破坏性变更走版本（`v1`→`v2` + 弃用周期）。**OpenAI 兼容子集承诺永不破**。**`v1.0` 已冻结（2026-06-10）**，每个端点的档位 + 实现状态见 §7 矩阵。机读规格见 [`openapi.yaml`](openapi.yaml)。
 
 ## 2. ① 能力面（L2 · 无状态模型能力）
 
@@ -92,3 +92,34 @@ agent 工具/权限边界（能否写盘/联网）由 runtime 配置，SI 可经
 - ③ Skills：对 ① 的 mock 联调编排，不等真模型。
 
 施工顺序见 `../build-plan.md` 的「ToB 并行线」（T0 chat→T1 STT→T2 Agent 面→T3 音频 skill→T4 扩模态）。
+
+## 7. 稳定性 + 实现状态矩阵（v1.0 冻结 · 2026-06-10）
+
+冻结 = **形状定死，是开发的权威基线**。但"形状冻结"≠"现在就能用"，两个维度要分开看：
+
+**稳定性档位**（契约会不会变）：
+
+- **Stable·承诺**：OpenAI 标准子集的标准字段，**永不破坏**。
+- **Stable·自定义**：我们定义的稳定契约，破坏走 `v2` + 弃用周期。
+- **Reserved**：形状纳入 v1 命名空间，但**首版不保证可用**；调用方不得依赖其在首版存在。要落地需上游 runtime 支持或后置实现。
+
+**实现状态**（现在能不能调）：`已实现`=T0 已落 / `排期`=T1-T3 / `需上游`=须给 PilotDeck 上游加能力（红线①：不在 fork 改）。
+
+| 端点 | 档位 | 实现状态 |
+| --- | --- | --- |
+| ① `POST /v1/chat/completions`（标准字段） | Stable·承诺 | 已实现(T0) |
+| ① `POST /v1/embeddings` | Stable·承诺 | 已实现(T0) |
+| ① `POST /v1/audio/transcriptions` | Stable·承诺(+`usage` 超集) | 排期(T1) |
+| ① `POST /v1/audio/speech` | Stable·承诺 | 排期(T4) |
+| ① `POST /v1/images/generations` | Stable·承诺 | 排期(T4) |
+| ① `POST /v1/video/generations` + 轮询 | Stable·自定义 | 排期(T4) |
+| 发现 `GET /v1/capabilities`·`/v1/models`·`/healthz` | Stable·自定义 | 已实现(T0) |
+| ② `POST /v1/agent/chat/completions`（sync+stream）+`X-Session-Id`+429 | Stable·自定义 | 排期(T2) |
+| ② `background` 异步 + `GET /v1/agent/turns/{id}` | **Reserved** | **需上游** |
+| ② `GET /v1/agent/sessions`·`/sessions/{id}/messages` | **Reserved** | **需上游** |
+| ② `DELETE /v1/agent/sessions/{id}` | **Reserved** | **需上游** |
+| ③ `/v1/skills/*` 管理面 | Stable·自定义 | 排期(T3) |
+| `X-Pinea-App-Id` 强隔离 | **Reserved** | 单 SI 下 no-op |
+
+> 依据：② 的底座 `vendor/pilotdeck/.../api-server/ApiServerChannel.ts` 今天只支持 `POST /v1/chat/completions`（sync+SSE）+ `X-Hermes-Session-Id` + 同 session 429；异步/会话删除/会话列表读**均无**，故标 Reserved·需上游。
+> 冻结边界：本次冻结**接口套**（capability/agent/skill + openapi）。`architecture.md` / `model-gateway.md` 是设计文档，随实现演进，不在本次冻结范围。

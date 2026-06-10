@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Pinea Model Gateway — ToB API (device front door)
-  version: 0.1.0-draft
+  version: 1.0.0
   description: |
     三类 ToB 共用一个设备前门（Pinea Model Gateway）：
       ① 能力面（无状态模型能力，OpenAI 兼容）
@@ -9,7 +9,11 @@ info:
       ③ Skills（行业能力管理，/v1/skills/*）
 
     这是 Markdown 契约（capability-api.md / agent-api.md / skill-contract.md）的机读快照。
-    语义/边界以 Markdown 为准；本文件未冻结（draft）。
+    语义/边界以 Markdown 为准。
+
+    v1.0 已冻结（2026-06-10）。稳定性 + 实现状态见 tob-overview.md §7 矩阵。
+    部分端点为 Reserved（标 x-pinea-status: reserved）：形状纳入 v1，但首版不保证可用，
+    需上游 runtime 支持，调用方不得依赖其在首版存在。
 
     兼容性：OpenAI 超集。标记为「镜像」的标准字段承诺不破坏；带 x-pinea-* 的为 Pinea 扩展，
     标准客户端可忽略；自定义端点（/v1/video、/v1/agent、/v1/skills、/v1/capabilities）按版本演进。
@@ -254,7 +258,8 @@ paths:
                 background:
                   type: boolean
                   default: false
-                  description: 'Pinea 扩展：true → 202 异步回合，轮询 /v1/agent/turns/{id}'
+                  x-pinea-status: reserved
+                  description: 'Reserved·需上游：true → 202 异步回合，轮询 /v1/agent/turns/{id}。首版不可用，请用 stream。'
       responses:
         '200':
           description: 同步：chat.completion 或 SSE
@@ -283,6 +288,8 @@ paths:
     get:
       tags: [agent]
       summary: 轮询异步回合
+      x-pinea-status: reserved
+      description: 'Reserved·需上游：api_server 今天无异步任务支持，首版不可用。'
       parameters:
         - $ref: '#/components/parameters/JobId'
       responses:
@@ -295,6 +302,7 @@ paths:
     delete:
       tags: [agent]
       summary: 取消进行中异步回合（尽力）
+      x-pinea-status: reserved
       parameters:
         - $ref: '#/components/parameters/JobId'
       responses:
@@ -305,6 +313,8 @@ paths:
     get:
       tags: [agent]
       summary: 列会话（只读）
+      x-pinea-status: reserved
+      description: 'Reserved·需上游：api_server 今天无会话列表端点，首版不可用。'
       parameters:
         - $ref: '#/components/parameters/AppId'
       responses:
@@ -317,6 +327,8 @@ paths:
     get:
       tags: [agent]
       summary: 读会话历史（只读，供 UI 回放）
+      x-pinea-status: reserved
+      description: 'Reserved·需上游：api_server 今天无会话历史读端点，首版不可用。'
       parameters:
         - $ref: '#/components/parameters/SessionPath'
       responses:
@@ -330,6 +342,8 @@ paths:
     delete:
       tags: [agent]
       summary: 删会话 + 记忆作用域（被遗忘权）
+      x-pinea-status: reserved
+      description: 'Reserved·需上游：api_server 今天无会话删除端点，首版不可用。'
       parameters:
         - $ref: '#/components/parameters/SessionPath'
       responses:

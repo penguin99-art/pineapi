@@ -3,7 +3,7 @@
 > 配套：设计见 `../model-gateway.md`，总览见 `README.md`，有状态 agent 见 `agent-api.md`。
 > 这是 **ToB 第一类接口（无状态模型能力）**——SI 集成方照此对接，PilotDeck 也经 `model.providers` 消费同一份。
 > Pinea Model Gateway 是**三类 ToB 的设备前门**：① 无状态模型能力（本文）、② 有状态 Agent 面（`agent-api.md`，路径 `/v1/agent/*`）、③ Skills 管理（`skill-contract.md`）。三类同一设备 base_url，同一安全门锁，同一发现/日志。
-> **稳定性**：对外契约，破坏性变更走版本（见 §版本）。当前 = `v1`（draft，未冻结）。
+> **稳定性**：对外契约，破坏性变更走版本（见 §版本）。**`v1.0` 已冻结（2026-06-10）**；端点档位 + 实现状态见 `tob-overview.md` §7 矩阵。
 
 ## 0. 约定
 
@@ -207,7 +207,7 @@ OpenAI 无此标准。视频生成慢 → **异步任务**：
 - 路径前缀 `v1`。新增端点/字段 = 向后兼容，可直接加。
 - **稳定性承诺**：OpenAI 兼容子集（chat/embeddings/audio/images 的标准字段）**承诺永不破坏**；自定义部分（`/v1/video`、`/v1/capabilities`、`usage` 扩展）按下方规则演进。
 - 破坏性变更（删字段/改语义）→ 升 `v2` 并并行保留一个弃用周期。
-- 本契约未冻结前（draft），以本文件为准；冻结时打 tag 并在此标注。
+- **`v1.0` 已冻结（2026-06-10）**：Stable 档位锁定；Reserved 端点（见 `tob-overview.md` §7）形状纳入 v1，但首版不保证可用，调用方不得依赖其存在。
 
 ## 给实现/对接方的并行约定
 
