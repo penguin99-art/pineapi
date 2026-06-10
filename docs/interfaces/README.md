@@ -18,6 +18,8 @@
 
 > ② Agent 面 = 把 Runtime 契约的 `api_server` inbound 接缝从"内部"升格为"对外产品"，零改核心（见 `agent-api.md` / `runtime-contract.md`）。
 
+> 三类 ToB 的**机读规格**（端点/形状/错误/限额/作用域）见 [`openapi.yaml`](openapi.yaml)（OpenAPI 3.1，Markdown 契约的快照）。跨类约定（`X-Pinea-App-Id` 作用域、错误↔状态码、默认限额、OpenAI superset 边界）集中在 `capability-api.md` §0/§9。
+
 ## 三类边界，三种稳定性
 
 1. **对外契约（ToB，最稳）**：能力面 API + Agent 面 API + 公共 Skill 契约。一旦发出去给 SI，破坏性变更要走版本。`capability-api.md` / `agent-api.md` 标了 stability，OpenAI 兼容子集承诺永不破。

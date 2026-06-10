@@ -1,0 +1,627 @@
+openapi: 3.1.0
+info:
+  title: Pinea Model Gateway — ToB API (device front door)
+  version: 0.1.0-draft
+  description: |
+    三类 ToB 共用一个设备前门（Pinea Model Gateway）：
+      ① 能力面（无状态模型能力，OpenAI 兼容）
+      ② Agent 面（有状态智能体，/v1/agent/*）
+      ③ Skills（行业能力管理，/v1/skills/*）
+
+    这是 Markdown 契约（capability-api.md / agent-api.md / skill-contract.md）的机读快照。
+    语义/边界以 Markdown 为准；本文件未冻结（draft）。
+
+    兼容性：OpenAI 超集。标记为「镜像」的标准字段承诺不破坏；带 x-pinea-* 的为 Pinea 扩展，
+    标准客户端可忽略；自定义端点（/v1/video、/v1/agent、/v1/skills、/v1/capabilities）按版本演进。
+servers:
+  - url: http://127.0.0.1:18800
+    description: 本机设备前门（默认）
+  - url: http://{host}:{port}
+    description: 自定义部署（外放需开启 Bearer 门锁）
+    variables:
+      host:
+        default: 127.0.0.1
+      port:
+        default: "18800"
+
+security:
+  - deviceBearer: []
+  - {}   # 本机封闭部署可关闭门锁
+
+tags:
+  - name: capability
+    description: ① 无状态模型能力
+  - name: agent
+    description: ② 有状态智能体
+  - name: skills
+    description: ③ 行业能力管理（安装类为 admin 操作）
+  - name: discovery
+    description: 能力 / 模型 / 健康发现
+
+paths:
+  /v1/chat/completions:
+    post:
+      tags: [capability]
+      summary: 文本 / 工具 / 视觉（OpenAI 镜像）
+      parameters:
+        - $ref: '#/components/parameters/AppId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+              required: [model, messages]
+              properties:
+                model: { type: string }
+                messages:
+                  type: array
+                  items: { type: object, additionalProperties: true }
+                tools:
+                  type: array
+                  items: { type: object, additionalProperties: true }
+                stream: { type: boolean, default: false }
+      responses:
+        '200':
+          description: chat.completion 或 SSE chat.completion.chunk 流
+          content:
+            application/json:
+              schema: { type: object, additionalProperties: true }
+            text/event-stream:
+              schema: { type: string }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '429': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+
+  /v1/embeddings:
+    post:
+      tags: [capability]
+      summary: 向量（OpenAI 镜像）
+      parameters:
+        - $ref: '#/components/parameters/AppId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [model, input]
+              properties:
+                model: { type: string }
+                input:
+                  oneOf:
+                    - { type: string }
+                    - { type: array, items: { type: string } }
+      responses:
+        '200':
+          description: embedding list
+          content:
+            application/json:
+              schema: { type: object, additionalProperties: true }
+        '400': { $ref: '#/components/responses/Error' }
+
+  /v1/audio/transcriptions:
+    post:
+      tags: [capability]
+      summary: STT（OpenAI 超集；附加 usage.duration）
+      parameters:
+        - $ref: '#/components/parameters/AppId'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file, model]
+              properties:
+                file: { type: string, format: binary, description: '≤25MB, ≤30min; wav/mp3/m4a/flac/ogg/webm' }
+                model: { type: string }
+                language: { type: string }
+                response_format:
+                  type: string
+                  enum: [json, verbose_json, text]
+                  default: json
+      responses:
+        '200':
+          description: 转写结果
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  text: { type: string }
+                  usage: { $ref: '#/components/schemas/UsageDuration' }
+        '400': { $ref: '#/components/responses/Error' }
+        '413': { $ref: '#/components/responses/Error' }
+
+  /v1/audio/speech:
+    post:
+      tags: [capability]
+      summary: TTS（OpenAI 镜像）
+      parameters:
+        - $ref: '#/components/parameters/AppId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [model, input]
+              properties:
+                model: { type: string }
+                input: { type: string, description: '≤4096 字符' }
+                voice: { type: string }
+                response_format: { type: string, enum: [wav, mp3, opus, pcm], default: wav }
+      responses:
+        '200':
+          description: 音频二进制
+          content:
+            audio/wav: { schema: { type: string, format: binary } }
+            audio/mpeg: { schema: { type: string, format: binary } }
+        '400': { $ref: '#/components/responses/Error' }
+
+  /v1/images/generations:
+    post:
+      tags: [capability]
+      summary: 生图（OpenAI 镜像）
+      parameters:
+        - $ref: '#/components/parameters/AppId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [prompt]
+              properties:
+                model: { type: string }
+                prompt: { type: string }
+                n: { type: integer, default: 1 }
+                size: { type: string, default: '1024x1024' }
+                response_format: { type: string, enum: [b64_json, url], default: b64_json }
+      responses:
+        '200':
+          description: 图像结果
+          content:
+            application/json:
+              schema: { type: object, additionalProperties: true }
+        '400': { $ref: '#/components/responses/Error' }
+        '429': { $ref: '#/components/responses/Error' }
+
+  /v1/video/generations:
+    post:
+      tags: [capability]
+      summary: 生视频（Pinea 自定义 · 异步）
+      parameters:
+        - $ref: '#/components/parameters/AppId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [prompt]
+              properties:
+                model: { type: string }
+                prompt: { type: string }
+                seconds: { type: integer, default: 4 }
+                size: { type: string, default: '720p' }
+                callback_url: { type: string, format: uri }
+      responses:
+        '202':
+          description: 任务已入队
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AsyncJob' }
+        '429': { $ref: '#/components/responses/Error' }
+  /v1/video/generations/{id}:
+    get:
+      tags: [capability]
+      summary: 轮询视频任务
+      parameters:
+        - $ref: '#/components/parameters/JobId'
+      responses:
+        '200':
+          description: 任务状态
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AsyncJob' }
+        '404': { $ref: '#/components/responses/Error' }
+
+  /v1/agent/chat/completions:
+    post:
+      tags: [agent]
+      summary: 有状态 agent 回合（OpenAI 镜像 + session/异步扩展）
+      parameters:
+        - $ref: '#/components/parameters/AppId'
+        - $ref: '#/components/parameters/SessionId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+              required: [messages]
+              properties:
+                model: { type: string }
+                messages:
+                  type: array
+                  items: { type: object, additionalProperties: true }
+                stream: { type: boolean, default: false }
+                background:
+                  type: boolean
+                  default: false
+                  description: 'Pinea 扩展：true → 202 异步回合，轮询 /v1/agent/turns/{id}'
+      responses:
+        '200':
+          description: 同步：chat.completion 或 SSE
+          headers:
+            X-Session-Id: { schema: { type: string } }
+          content:
+            application/json:
+              schema: { type: object, additionalProperties: true }
+            text/event-stream:
+              schema: { type: string }
+        '202':
+          description: 'background:true 时返回回合句柄'
+          headers:
+            X-Session-Id: { schema: { type: string } }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AsyncJob' }
+        '401': { $ref: '#/components/responses/Error' }
+        '429':
+          description: 同 session 并发回合（session_busy）
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+
+  /v1/agent/turns/{id}:
+    get:
+      tags: [agent]
+      summary: 轮询异步回合
+      parameters:
+        - $ref: '#/components/parameters/JobId'
+      responses:
+        '200':
+          description: 回合状态；succeeded 时 result 为 chat.completion
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AsyncJob' }
+        '404': { $ref: '#/components/responses/Error' }
+    delete:
+      tags: [agent]
+      summary: 取消进行中异步回合（尽力）
+      parameters:
+        - $ref: '#/components/parameters/JobId'
+      responses:
+        '200': { description: 已请求取消}
+        '404': { $ref: '#/components/responses/Error' }
+
+  /v1/agent/sessions:
+    get:
+      tags: [agent]
+      summary: 列会话（只读）
+      parameters:
+        - $ref: '#/components/parameters/AppId'
+      responses:
+        '200':
+          description: 会话列表
+          content:
+            application/json:
+              schema: { type: object, additionalProperties: true }
+  /v1/agent/sessions/{id}/messages:
+    get:
+      tags: [agent]
+      summary: 读会话历史（只读，供 UI 回放）
+      parameters:
+        - $ref: '#/components/parameters/SessionPath'
+      responses:
+        '200':
+          description: 会话消息
+          content:
+            application/json:
+              schema: { type: object, additionalProperties: true }
+        '404': { $ref: '#/components/responses/Error' }
+  /v1/agent/sessions/{id}:
+    delete:
+      tags: [agent]
+      summary: 删会话 + 记忆作用域（被遗忘权）
+      parameters:
+        - $ref: '#/components/parameters/SessionPath'
+      responses:
+        '200': { description: 已删除（幂等）}
+        '404': { $ref: '#/components/responses/Error' }
+
+  /v1/skills:
+    get:
+      tags: [skills]
+      summary: 列已安装 skill（含 unmet_requirements）
+      parameters:
+        - $ref: '#/components/parameters/AppId'
+      responses:
+        '200':
+          description: skill 列表
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Skill' }
+  /v1/skills/install:
+    post:
+      tags: [skills]
+      summary: 安装 skill（admin）
+      description: '管理操作；门锁开启时要求 token，非管理调用 → 403 admin_required。'
+      parameters:
+        - $ref: '#/components/parameters/AppId'
+        - name: force
+          in: query
+          required: false
+          schema: { type: boolean, default: false }
+          description: 覆盖同名同版本 / 强装缺依赖
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [source]
+              properties:
+                source:
+                  type: object
+                  required: [type]
+                  properties:
+                    type: { type: string, enum: [local_path, zip] }
+                    path: { type: string }
+                enabled: { type: boolean, default: true }
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file: { type: string, format: binary, description: 'zip/tar，根目录含 SKILL.md' }
+                enabled: { type: boolean, default: true }
+      responses:
+        '200':
+          description: 安装结果
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Skill' }
+        '400': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
+  /v1/skills/scan:
+    post:
+      tags: [skills]
+      summary: 重扫底层目录（admin）
+      responses:
+        '200': { description: 已扫描}
+        '403': { $ref: '#/components/responses/Error' }
+  /v1/skills/{name}:
+    get:
+      tags: [skills]
+      summary: 读 SKILL.md 与元信息
+      parameters:
+        - $ref: '#/components/parameters/SkillName'
+      responses:
+        '200':
+          description: skill 详情
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Skill' }
+        '404': { $ref: '#/components/responses/Error' }
+    delete:
+      tags: [skills]
+      summary: 删除 skill（admin）
+      parameters:
+        - $ref: '#/components/parameters/SkillName'
+      responses:
+        '200': { description: 已删除}
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+  /v1/skills/{name}/enable:
+    post:
+      tags: [skills]
+      summary: 启用 skill（admin）
+      parameters:
+        - $ref: '#/components/parameters/SkillName'
+      responses:
+        '200':
+          description: 已启用
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Skill' }
+        '403': { $ref: '#/components/responses/Error' }
+  /v1/skills/{name}/disable:
+    post:
+      tags: [skills]
+      summary: 禁用 skill（admin）
+      parameters:
+        - $ref: '#/components/parameters/SkillName'
+      responses:
+        '200':
+          description: 已禁用
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Skill' }
+        '403': { $ref: '#/components/responses/Error' }
+
+  /v1/capabilities:
+    get:
+      tags: [discovery]
+      summary: 三类 ToB 一起发现（模态/agent 权限/skills/limits）
+      responses:
+        '200':
+          description: 设备当前可用能力
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Capabilities' }
+  /v1/models:
+    get:
+      tags: [discovery]
+      summary: 跨后端模型列表
+      responses:
+        '200':
+          description: 模型列表
+          content:
+            application/json:
+              schema: { type: object, additionalProperties: true }
+  /healthz:
+    get:
+      tags: [discovery]
+      summary: 聚合后端探活
+      security: []
+      responses:
+        '200':
+          description: 健康状态
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, enum: [ok, degraded] }
+                  backends: { type: object, additionalProperties: { type: string } }
+
+components:
+  securitySchemes:
+    deviceBearer:
+      type: http
+      scheme: bearer
+      description: 设备安全门锁；外放（非 127.0.0.1/localhost/::1）必填。
+
+  parameters:
+    AppId:
+      name: X-Pinea-App-Id
+      in: header
+      required: false
+      description: 应用作用域，缺省 default；为单盒多 SI 隔离预留（MVP no-op）。
+      schema: { type: string, default: default }
+    SessionId:
+      name: X-Session-Id
+      in: header
+      required: false
+      description: 会话标识；缺省自动生成并在响应头回带。有效会话 = (app_id, session_id)。
+      schema: { type: string }
+    JobId:
+      name: id
+      in: path
+      required: true
+      schema: { type: string }
+    SessionPath:
+      name: id
+      in: path
+      required: true
+      schema: { type: string }
+    SkillName:
+      name: name
+      in: path
+      required: true
+      schema: { type: string, pattern: '^[a-z0-9]+(-[a-z0-9]+)*$' }
+
+  responses:
+    Error:
+      description: 统一错误形状
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+
+  schemas:
+    ErrorEnvelope:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [message, type]
+          properties:
+            message: { type: string, description: 仅供人读 }
+            type:
+              type: string
+              enum:
+                - invalid_request_error
+                - authentication_error
+                - permission_error
+                - not_found_error
+                - rate_limit_error
+                - server_error
+                - service_unavailable_error
+            code:
+              type: string
+              description: 机读码，如 payload_too_large / session_busy / admin_required / timeout
+            param: { type: string }
+    UsageDuration:
+      type: object
+      properties:
+        type: { type: string, const: duration }
+        seconds: { type: number }
+    AsyncJob:
+      type: object
+      required: [id, status]
+      properties:
+        id: { type: string }
+        status: { type: string, enum: [queued, running, succeeded, failed] }
+        progress: { type: number, minimum: 0, maximum: 1 }
+        result: { type: object, additionalProperties: true }
+        error: { $ref: '#/components/schemas/ErrorEnvelope' }
+    Skill:
+      type: object
+      required: [name, enabled, status]
+      properties:
+        name: { type: string }
+        version: { type: string }
+        description: { type: string }
+        enabled: { type: boolean }
+        status:
+          type: string
+          enum: [installed, installed_restart_required, disabled]
+        installed_at: { type: string, format: date-time }
+        requires:
+          type: object
+          properties:
+            modalities: { type: array, items: { type: string } }
+            tools: { type: array, items: { type: string } }
+        unmet_requirements:
+          type: array
+          items: { type: string }
+    Capabilities:
+      type: object
+      properties:
+        object: { type: string, const: capabilities }
+        modalities:
+          type: object
+          additionalProperties:
+            type: object
+            properties:
+              available: { type: boolean }
+              models: { type: array, items: { type: string } }
+              status: { type: string, enum: [idle, busy, warming, down] }
+        agent:
+          type: object
+          properties:
+            available: { type: boolean }
+            tools: { type: array, items: { type: string } }
+            permissions:
+              type: object
+              properties:
+                filesystem: { type: string, enum: [none, workspace, full] }
+                network: { type: boolean }
+        skills:
+          type: array
+          items: { $ref: '#/components/schemas/Skill' }
+        limits:
+          type: object
+          properties:
+            request_body_bytes: { type: integer }
+            stt:
+              type: object
+              properties:
+                max_file_bytes: { type: integer }
+                max_seconds: { type: integer }
+                formats: { type: array, items: { type: string } }
+            tts:
+              type: object
+              properties:
+                max_input_chars: { type: integer }
