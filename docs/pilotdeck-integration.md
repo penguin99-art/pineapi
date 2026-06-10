@@ -21,7 +21,7 @@ pineapi/                        ← 本仓（私有）
 │  ├─ channels/                 ← 桌伴等自定义 ChannelAdapter(仿 api_server)
 │  └─ mcp/                      ← 设备反控 MCP server
 ├─ studio/                      ← 全新 UI 壳(套 gateway SDK)
-└─ deploy/                      ← 盒子装配:四进程 + 总线编排(compose/脚本)
+└─ deploy/                      ← 盒子装配:五进程(网关/runtime/感知/soul/表达) + 总线编排(compose/脚本)
 ```
 
 为什么两仓：PilotDeck 保持通用、可对外开源、可同步上游；pinea 私有，放灵魂 + 装配。边界 = submodule。

@@ -267,6 +267,9 @@
       本文基于当前已落盘的架构、Gateway、ToB 接口与 ToC Piny 讨论整理而成。
       目标是把系统边界、ToB 对外接口、ToC Soul 支撑逻辑和实现约束放在一张可阅读的说明里。
     </p>
+    <p style="margin-top:12px;font-size:14px;color:rgba(255,255,255,0.7);">
+      快照（2026-06-10）：本 HTML 是汇总视图，权威以 <code style="background:rgba(255,255,255,0.14);color:#fff;">docs/architecture.md</code> 等 Markdown 契约为准；如二者不一致以 Markdown 为准。
+    </p>
   </header>
 
   <main>
@@ -291,6 +294,9 @@
       <div class="note">
         红线：不改 PilotDeck 核心；Core 不 import 感知/表达/Soul；Studio 只依赖 gateway 契约；表达端只订阅状态，不自行判态。
       </div>
+      <p style="margin-top:12px;">
+        记忆也分层：<strong>Core memory（白盒记忆）</strong>存对话/知识/任务/workspace，随 Core 发 B 端；<strong>Soul memory</strong>存主人特征、关系、节律、打扰偏好，C 端专属、绝不进 Core。Core 永不读 Soul memory。
+      </p>
     </section>
 
     <section id="big-picture">
@@ -299,7 +305,7 @@
         <div class="flow-row">
           <div class="box"><strong>使用方</strong><small>SI App / Studio / 桌伴 / Phone / 外设</small></div>
           <div class="arrow">→</div>
-          <div class="box gateway"><strong>Pinea Model Gateway</strong><small>设备前门：OpenAI 兼容 + Agent + Skills 管理</small></div>
+          <div class="box gateway"><strong>Pinea Model Gateway</strong><small>设备前门：OpenAI 兼容 + Agent + Skills 管理 + wss 流式代理</small></div>
           <div class="arrow">→</div>
           <div class="box core"><strong>模型后端</strong><small>ollama / speaches / Piper / Kokoro / ComfyUI</small></div>
         </div>
@@ -412,13 +418,30 @@
           <div class="box soul"><strong>PineaState</strong><small>事件总线，承载 presence、voice、intent</small></div>
         </div>
         <div class="flow-row">
-          <div class="box soul"><strong>Soul</strong><small>读事件和私有记忆，判断是否主动、是否触发 Core</small></div>
+          <div class="box soul"><strong>Soul 反射层</strong><small>规则/fast model 路由：ignore / listen / reply / escalate</small></div>
           <div class="arrow">→</div>
-          <div class="box runtime"><strong>Core Agent</strong><small>执行复杂任务、工具、skills、白盒记忆</small></div>
+          <div class="box runtime"><strong>Core Agent（仅 escalate）</strong><small>复杂任务、工具、skills、白盒记忆</small></div>
           <div class="arrow">→</div>
           <div class="box soul"><strong>表达</strong><small>只订阅 state：灯带 / TTS / 桌伴 / Phone / Studio</small></div>
         </div>
       </div>
+
+      <h3>实时响应路由（快/慢分流）</h3>
+      <p>
+        ToC 不把每个事件都丢进 agent。Soul 先用规则或 <code>fast model</code> 做低延迟判断；只有需要长上下文、记忆、工具或多步时才升级（escalate）进 Agent Runtime。
+        <code>fast model</code> 不是第二套 agent，不调工具、不写 Core memory。
+      </p>
+      <table>
+        <thead>
+          <tr><th>判断</th><th>延迟目标</th><th>动作</th><th>进 Agent Runtime？</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>ignore</code></td><td>近实时</td><td>不响应，只更新 presence/节律</td><td>否</td></tr>
+          <tr><td><code>listen</code></td><td>近实时</td><td>切 <code>listening</code>，等用户继续说</td><td>否</td></tr>
+          <tr><td><code>reply</code></td><td>低延迟</td><td>fast model / 模板生成短回复，表达层播报</td><td>否</td></tr>
+          <tr><td><code>escalate</code></td><td>可慢</td><td>Soul 调 <code>submitTurn</code> 进入 agent loop</td><td>是</td></tr>
+        </tbody>
+      </table>
 
       <h3>Soul 的唯一状态机</h3>
       <table>
