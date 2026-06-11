@@ -79,6 +79,20 @@
 
 并行约定：每个能力先用 **mock 后端**立契约，SI/skill 同时对接，真模型后置替换（契约不变）。
 
+### 行业驱动的接口增量（gut-health 反推，2026-06-11 评估通过）
+
+> 来源：`solutions/gut-health/`（提炼规则见 `solutions/README.md`）。均为**加法**（新端点/新头/新错误码），不破 `contract-v1.0`；实现落地时按 Reserved→Stable 升档进 `interfaces/`。
+
+| 增量 | 锚点 | 内容与通过标准 | 优先级 |
+| --- | --- | --- | --- |
+| 结构化抽取保障（①） | **并入 T1 后、T2 前**（记 T1.5） | 网关侧 `json_schema` 校验 + 自动重试（上限 N 次），仍失败返 `422 schema_invalid`。**通过标准**：故意给弱模型 + 复杂 schema，对外可见合规率 100%（重试在网关内消化）；conformance 加用例 | **P0** |
+| 视觉理解（①） | 新 spike → 排期 | chat 多模态 messages（图片输入，minicpm-v 起步）。**先 spike**：检测报告样张 ≥20 份字段抽取实测，精度数字决定承诺档位（达标→端点排期；不达标→文档明示"SI 侧 OCR 兜底"）| **P0**（spike 即刻） |
+| QoS 优先级声明（①②） | 并入 T2 设备闸门 | `X-Pinea-Priority: interactive\|batch`（缺省 interactive）；batch 进低优先队列可延后，429/`Retry-After` 语义不变。**通过标准**：batch 占满队列时 interactive 请求延迟不明显劣化（复用 T1 QoS 测法） | **P1** |
+| Skill 包版本化分发（③） | 并入 T3 | registry 带 `version`/`hash`；同包重装幂等；`GET /v1/skills` 返回版本清单。**通过标准**：装 v1→装 v2→列表见版本变化→回装 v1 幂等成功；为总部→门店 updater（T-D #6）提供接口地基 | **P1** |
+| 输出合规扫描（网关增值层） | T3 后评估 | per-app 禁用词表资产，响应自动扫描：违例→重试一次→仍违例打 `x-pinea-flagged` 头交 SI 处置。先以验收脚本形态用于 gut-health 一期，跑顺后产品化 | **P2** |
+
+附带 T-D 追加第 6 项：**skill 资产分发 updater**（总部发布→门店 pull→③ 重装的小工具，版本校验 + 失败回滚）。
+
 ## 三个工程判断
 
 1. **风险前置**：第 0 步的本地模型 tool calling 是成败点,死磕它再做别的。
