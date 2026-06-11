@@ -55,7 +55,7 @@ submitTurn(input: GatewaySubmitTurnInput): AsyncIterable<GatewayEvent>
 { "hookEventName":"SessionStart", "sessionId":"...", "transcriptPath":"...", "cwd":"...",
   "permissionMode":"...", "agentId":"...", "agentType":"...", /* + 各事件附加字段 */ }
 ```
-- 用途：表达层挂 `SessionStart→thinking`、`Stop→idle` 等，往 PineaState 总线发 `state`（见 `pineastate-bus.md`）。
+- 用途：outbound 桥挂 `SessionStart` / `PreToolUse` / `Stop` 等 hook，把 runtime 信号**翻译成 `core.lifecycle` 事件**发往 PineaState 总线；hook **不直接写 `state`**——`state` 唯一写者是 soul 状态机（红线 4，映射表见 `pineastate-bus.md` §3）。
 
 ### B) Gateway 事件流（订阅，Studio/表达用）
 依据：`GatewayEvent`（`src/gateway/protocol/types.ts`），经 `GatewayWsClient`/`RemoteGateway` 消费。
@@ -72,6 +72,8 @@ submitTurn(input: GatewaySubmitTurnInput): AsyncIterable<GatewayEvent>
 | `context_budget{used,total,ratio,state}` | 上下文预算 |
 | `turn_completed{usage,finishReason}` | 回合完成 |
 | `error{message,code?,recoverable}` | 错误 |
+
+> **形状即标准**：上表 `GatewayEvent` 子集已被 P1 网关的 wss 流式面对外转发（`model-gateway.md` §6.5）、被 ② Agent 面 SSE 扩展帧复用（`agent-api.md` §2），即**升格为 Pinea 流式事件标准（v1 = 当前 PilotDeck 形状的快照）**。换 runtime 时若新 runtime 事件形状不同，由 **P1 负责翻译成本表形状**，Studio/SI 消费方不动。
 
 ## 契约四 · gateway SDK（Studio 数据面）
 

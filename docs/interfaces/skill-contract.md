@@ -2,7 +2,7 @@
 
 > 配套：架构见 `../architecture.md` §8，能力面见 `capability-api.md`，Agent 面见 `agent-api.md`，总览见 `README.md`。
 > 这是 **ToB 第三类接口**——把行业流程做成可复用 skill，跑在 ② Agent 面之上，发 B 端。
-> **稳定性**：`v1.0` 已冻结（2026-06-10）。`SKILL.md` 格式 + `/v1/skills/*` 管理面为 Stable·自定义契约；实现排期 T3（见 `tob-overview.md` §7）。`SKILL.md` 对齐 Anthropic 开放 Agent Skills 标准，故可移植。
+> **稳定性**：`v1.0` 已冻结（2026-06-10）。`SKILL.md` 格式 + `/v1/skills/*` 管理面为 Stable·自定义契约；实现排期 T3（见 `tob-overview.md` §7）。`SKILL.md` 对齐 **Agent Skills 开放标准**（[agentskills.io](https://agentskills.io)，Anthropic 发起，已被 Claude/Cursor/GitHub Copilot/VS Code/Gemini CLI/OpenAI Codex/Goose 等数十个 agent 产品采用），故可移植、不锁定我们。
 > 依据（PilotDeck 真实契约）：`vendor/pilotdeck/skills/*/SKILL.md`、`vendor/pilotdeck/src/extension/skills/types.ts`、gateway 的 `skillsList/skillRead/...` RPC（`src/gateway/protocol/types.ts`）。
 
 ## 0. 一句话
@@ -33,11 +33,12 @@ requires:
 4. 写回结构化结果 + 入记忆。
 ```
 
-- `name`：唯一标识（kebab-case）。
-- `version`：语义化版本（可选但推荐）；同名再装按 §2.2 走升级/回滚。
-- `description`：**触发条件**，写清"用户说什么/想干什么时用"——这是 agent 选不选它的唯一依据，要具体。**安全相关，见 §2.3 触发边界**。
-- `requires`：能力依赖声明（可选）。`modalities` 对应 ① 能力面模态，`tools` 对应 runtime 工具。安装时按此校验「这台盒子能不能跑」，见 §2.1。
-- 正文：给 agent 的操作手册（何时用 / 步骤 / 注意），可引用同目录脚本。
+- `name`：唯一标识。对齐 Agent Skills 标准：≤64 字符、小写字母/数字/连字符、不以连字符开头结尾、无连续连字符、**必须与目录名一致**。
+- `version`：语义化版本（可选但推荐）；同名再装按 §2.2 走升级/回滚。**Pinea 扩展字段**（标准把版本放 `metadata.version`，我们安装面需要顶层可机读；导出到其它 runtime 时网关可自动降级为 `metadata.version`）。
+- `description`：**触发条件**（标准上限 1024 字符），写清"用户说什么/想干什么时用"——这是 agent 选不选它的唯一依据，要具体。**安全相关，见 §2.3 触发边界**。
+- `requires`：能力依赖声明（可选）。`modalities` 对应 ① 能力面模态，`tools` 对应 runtime 工具。安装时按此校验「这台盒子能不能跑」，见 §2.1。**Pinea 扩展字段**（标准无依赖声明机制；标准 runtime 会忽略它，不影响可移植性）。
+- 标准的可选字段 `license` / `compatibility` / `metadata` / `allowed-tools`（实验性）原样接受并透传，不参与网关校验。
+- 正文：给 agent 的操作手册（何时用 / 步骤 / 注意），可引用同目录脚本。标准建议正文 <5000 tokens / 500 行，超出的拆到 `references/`（见 §1.1）。
 
 ### 1.1 渐进披露（三级加载 · 对齐开放 Agent Skills 标准）
 
@@ -54,7 +55,7 @@ requires:
 - `description` 要**具体**——它是第 1 级、是唯一的触发依据，写宽泛会误触发（也是 §2.3 的安全面）。
 - 把详细文档/大表/schema 拆到同目录文件，正文按名引用，别全塞进 `SKILL.md` 正文（控制第 2 级体积）。
 - 重逻辑写成脚本让 agent 执行，只回结果——既省上下文又避免小模型"看着代码瞎改"。
-- 这套机制与 Anthropic 开放的 Agent Skills 标准一致，故同一个 `SKILL.md` 包在其它兼容 runtime 也可复用（可移植，不锁定我们）。
+- 这套机制就是 Agent Skills 开放标准的「progressive disclosure」（[agentskills.io/specification](https://agentskills.io/specification)），同一个 `SKILL.md` 包在 Claude Code/Cursor/Copilot/Codex 等兼容 runtime 也可复用（可移植，不锁定我们）。标准还约定了 `scripts/`（执行不读入）、`references/`（按需读）、`assets/`（模板资源）的目录习惯，建议照用。
 
 ## 2. 安装 / 加载
 
@@ -111,13 +112,27 @@ requires:
 安装流程固定：
 
 1. 解包/读取 → 校验 `SKILL.md` frontmatter 的 `name`、`description`；缺失/格式错 → `400` `invalid_request_error`。
-2. 校验 `name` 为 kebab-case；同名见 §2.2 升级规则。
+2. 校验 `name`（对齐 Agent Skills 标准：≤64 字符、小写字母/数字/连字符、不以连字符开头结尾、无连续连字符、**与目录名一致**）；`description` ≤1024 字符。同名见 §2.2 升级规则。
 3. **能力校验**：把 `requires.modalities/tools` 比对 `GET /v1/capabilities`。缺依赖时不静默装坏：要么 `400` 拒绝，要么装但 `enabled:false` 且 `unmet_requirements:[...]`，由 `?force=true` 决定（默认拒绝）。
 4. 写入 `~/.pilotdeck/skills/<name>/`（项目级目录后置）。
 5. 写 Gateway registry：`name / version / enabled / source / requires / installedAt / updatedAt`。
 6. 触发 runtime skill scan；若 runtime 不支持热加载，返回 `status:"installed_restart_required"` 或等价提示。
 
-启停只改 registry + runtime 可见性，不修改 `SKILL.md` 内容。删除先禁用再移除目录；失败时保持 registry 和磁盘一致。
+### 2.1.1 启停机制（零改核心的具体落法）+ 单一真相源
+
+runtime 按目录扫描加载 skill，没有"已装但停用"的概念——所以**启停 = 网关搬目录**：
+
+- **disable**：把 `~/.pilotdeck/skills/<name>/` 整目录移到网关托管的隔离区 `~/.pinea/skills.disabled/<name>/`（不在 runtime 扫描路径内），更新 registry `enabled:false`，触发 rescan。
+- **enable**：反向移回 + rescan。文件内容全程不改。
+- 该机制不依赖 runtime 任何新能力，换 runtime 时只需换"扫描路径"常量。
+
+**单一真相源 = 磁盘**，registry 只是磁盘的索引/缓存，冲突时以磁盘为准。直接拷目录（出厂预装/调试）仍被允许，但属于"未纳管"状态；`POST /v1/skills/scan` 负责**双向收敛**：
+
+- 磁盘有、registry 无 → 补登记（`source:"unmanaged"`），从此纳管。
+- registry 有、磁盘无 → 标记 `status:"missing"`（或清除条目）。
+- 两边都有但版本/内容漂移 → 以磁盘为准刷新 registry。
+
+启停只改 registry + 目录位置（§2.1.1），不修改 `SKILL.md` 内容。删除先禁用再移除目录；失败时保持 registry 和磁盘一致。
 
 ### 2.2 版本 / 升级 / 回滚
 
@@ -149,6 +164,15 @@ requires:
 
 接口安装不是为了绕开磁盘，而是为了隐藏实现细节、做格式校验、支持启停/升级/回滚。直接拷目录只作为出厂预装或调试手段。
 
+### 2.5 确定性调用（行业交付的 SLA 抓手）
+
+按 `description` 自动触发是**概率性**的——对 C 端够用，对"每次都必须走完整工序"的行业交付不够。两级机制：
+
+- **`skill` 请求字段（T3 · 网关注入）**：② 请求体带 `"skill": "<name>"`（`agent-api.md` §1）。网关校验该 skill 存在且已启用（否则 `400 skill_not_found` / `skill_disabled`），把其调用指令注入回合输入再转发。配合渐进披露（frontmatter 常驻 system prompt），实测命中率接近确定；验收以批量实测为准（`build-plan.md` T3：20 个真实样本 20/20）。
+- **runtime 级硬强制**：后置上游能力（Reserved）。落地前不要向 SI 承诺"100% 强制"，承诺的是"实测 N/N 验收"。
+
+交付要求：每个行业 skill 必须附带**验收样本集**（输入样本 + 期望产出），交付与升级时跑样本集回归。我们不承诺模型输出质量（`../model-gateway.md` §6.6 SLA 边界），行业效果靠它兜底。
+
 ## 3. skill 怎么用"能力面"
 
 skill 正文/脚本通过**能力面端点**（`capability-api.md`）拿多模态能力，而不是直接摸模型。例如 STT：
@@ -176,4 +200,5 @@ curl -s -X POST "$PINEA_GATEWAY/v1/audio/transcriptions" \
 ## 6. 给交付方的并行约定
 
 - 先拿 `capability-api.md` 的 **mock 能力面**联调 skill 流程（STT 回固定文本即可验证编排），真模型后置；契约不变，skill 不返工。
-- skill 质量验收：参考 `vendor/pilotdeck/skills/skill-creator/`（评测/对比/打分 agent）的方法建最小验收。
+- skill 质量验收：附验收样本集（§2.5），方法可参考 `vendor/pilotdeck/skills/skill-creator/`（评测/对比/打分 agent）建最小验收。
+- 随 T3 产出《skill 开发指南》：脚手架目录 + 本契约的教程化版本，让 SI 能自己写行业 skill——SI 的 know-how 沉淀在盒子上，就是续约理由。

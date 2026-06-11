@@ -141,6 +141,7 @@ ToC 的产品边界：
 - `Soul` 是 ToC 中枢：它有自己的 Soul memory，负责关系、主动时机、打扰判断、实时响应路由和 6 态状态机。
 - `fast model` 是实时反射层的一条腿，用于低延迟判断和短表达；它不是 agent loop，不调用工具，不写 Core memory。
 - 需要长期上下文、白盒记忆、工具/MCP、skills、多步计划或文件 workspace 时，Soul 才把事件升级（escalate）为 Core agent 回合。
+- **escalate 必须带上下文**：fast path 的短交互不进 Core memory，agent 不知道"刚才聊了什么"。Soul 升级时把近期 fast-path 交互摘要随 `submitTurn` 的 `message` 前缀或 `attachments` 一并传入（见 `interfaces/pineastate-bus.md` §3 Inbound），保证对话连续性。
 - `Core` 仍然只做 agent 执行、工具、skills、白盒记忆；不 import 感知/表达/soul。
 - `Expression` 只渲染 Soul 写入的 `state`。状态机只有一个，避免 Studio、灯带、TTS 各自判态。
 
@@ -179,10 +180,11 @@ ToB 线:
 
 > **Agent Runtime 是一层、可换**：L3/L4 当前用 PilotDeck，但自研件只依赖它的*契约/扩展点*（`model.providers` / api_server channel / 磁盘 hook / gateway SDK），**从不 import 其内部模块**。所以 runtime 是一个被抽象掉的可替换层——换掉 PilotDeck 只需重接这几个扩展点，🟠 灵魂层、🔵 能力面、Studio 全不动。这正是红线 1/5 的副产物。
 
-> **预留：agent-native 调用（未来，非 MVP）**。现在三类 ToB 是"给人类开发者的 API 方言"。将来让**别的 agent 自己发现、自己派活**（agent 网络）= 在单一前门**再挂两个协议适配头**，agent 核（②+③）不变：
+> **预留：agent-native 调用（未来，非 MVP）**。现在三类 ToB 是"给人类开发者的 API 方言"。将来让**别的 agent 自己发现、自己派活**（agent 网络）= 在单一前门**再挂协议适配头**，agent 核（②+③）不变：
 >
-> - **MCP 头**：把 ①②③ 暴露成 MCP server，宿主 agent（Cursor/Claude 等）拿这台盒子当工具箱。最便宜的第一个 agent-native 赢。
-> - **A2A 头**：发布 **Agent Card**（`/.well-known/agent-card.json`，skills 取自 ③、capabilities 取自 `/v1/capabilities`，可自动生成）+ 任务协议；复用 L1 的 **mDNS** 让局域网内盒子/agent 互相**发现并承接**。反向"委派给远端 agent"= runtime 的 tool/MCP 扩展点，零改核心。
+> - **MCP 头**：把 ①②③ 暴露成 MCP server（MCP 已是业界事实标准，现行规格 **2025-11-25**，OpenAI/Google/Microsoft 均已采用），宿主 agent（Cursor/Claude/Codex 等）拿这台盒子当工具箱。最便宜的第一个 agent-native 赢。
+> - **A2A 头**：A2A 协议已发布 **v1.0** 并由 **Linux Foundation** 托管。发布 **Agent Card**（`/.well-known/agent-card.json`，skills 取自 ③、capabilities 取自 `/v1/capabilities`，可自动生成）+ 任务协议；复用 L1 的 **mDNS** 让局域网内盒子/agent 互相**发现并承接**。反向"委派给远端 agent"= runtime 的 tool/MCP 扩展点，零改核心。
+> - **Responses 头**：OpenAI Responses API 已是其推荐的有状态 agent 原语；若其形状成为跨厂事实标准，加 `/v1/agent/responses` 翻译头映射到 ② 同一接缝（见 `interfaces/agent-api.md` §0.1），核不动。
 > 架构在此**预留"前门协议适配器"格位**；具体实现待 spike（`research/spikes/agent-native.md`，未立），风险前置原则下先做网关本体。
 
 ## 1. ToB 本机集成模式（松果派）
@@ -274,7 +276,7 @@ ToC 的"主动"有两个来源，别混：
 | L7 应用    | 资料 / 创作 / 家庭 / 行业 Workflow                                                                                  | 自研 + 生态                             |
 
 
-L3/L4 = Agent Runtime 层（当前实现 PilotDeck，只依赖契约故可换），L5 自研——L5 是 Piny 区别于"装应用的私有云"的灵魂，结构上别人没有。L2 自研薄网关（只路由+归一+发现/健康/日志，不做推理），是三类 ToB 的**本机单一前门**（① 能力面 / ② Agent 面 / ③ Skills 管理）；推理后端仍复用 ollama/whisper/comfy 等。
+L3/L4 = Agent Runtime 层（当前实现 PilotDeck，只依赖契约故可换），L5 自研——L5 是 Piny 区别于"装应用的私有云"的灵魂，结构上别人没有。L2 自研网关（"薄"= 三条负面清单：不做推理 / 不做 agent loop / 不掺 soul，其余作为设备控制面允许有状态，见 `model-gateway.md` §2），是三类 ToB 的**本机单一前门**（① 能力面 / ② Agent 面 / ③ Skills 管理）；推理后端仍复用 ollama/whisper/comfy 等。
 
 ## 4. 五进程 + 一总线
 

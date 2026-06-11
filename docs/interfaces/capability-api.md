@@ -43,7 +43,7 @@ OpenAI 风格，全端点统一：
 | 403 | `permission_error` | `admin_required` | 调了需管理权限的端点（如 ③ 安装）|
 | 404 | `not_found_error` | `model_not_found` / `skill_not_found` / `session_not_found` | 资源不存在 |
 | 413 | `invalid_request_error` | `payload_too_large` | 上传超限（见 §0.3）|
-| 429 | `rate_limit_error` | `session_busy` / `queue_full` | 同 session 并发回合 / 重后端队列满 |
+| 429 | `rate_limit_error` | `session_busy` / `queue_full` | 同 session 并发回合 / 设备级 agent 并发满 / 重后端队列满。`queue_full` 时带 `Retry-After` 头 |
 | 500 | `server_error` | `backend_error` | 后端异常 |
 | 503 | `service_unavailable_error` | `backend_down` / `warming` | 后端未挂/未就绪 |
 | 504 | `server_error` | `timeout` | 后端超时 |
@@ -81,6 +81,7 @@ OpenAI Chat Completions 透传到 ollama（tool calling 已验证）。视觉 = 
 | --- | --- |
 | `model` | 见 `/v1/models`；默认 `gpt-oss:20b` |
 | `tools` / `tool_choice` | 透传，工具调用由调用方驱动多步 |
+| `response_format` | 透传。`{"type":"json_object"}` 与 `{"type":"json_schema","json_schema":{...}}`（structured outputs）随后端能力可用——ollama 已支持 schema 约束输出；后端不支持时回 `400 invalid_request_error`。SI 做信息抽取/结构化集成优先用它，别靠提示词约束 |
 | `stream` | SSE 流式 |
 
 ## 2. 向量 — `POST /v1/embeddings`
@@ -201,6 +202,8 @@ OpenAI 无此标准。视频生成慢 → **异步任务**：
 | `X-Pinea-App-Id` / `X-Session-Id` 头 | ⊕ 超集 | 标准客户端不发也能用（缺省 `default`）。 |
 
 约定：**带「✅ 镜像」的标准字段承诺永不破坏**；「⊕ 超集」只增字段、标准客户端可忽略；「⚠ 自定义」按 §版本 演进。
+
+**关于 OpenAI Responses API 的立场（2026-06 现状）**：OpenAI 推荐新项目用 Responses API，但 Chat Completions **未弃用、长期支持**（落日的是 Assistants API），且仍是本地开源推理栈（ollama/vLLM/llama.cpp）与兼容网关的通用基线协议——我们镜像的就是这条基线。Responses 风格的有状态语义由 ② Agent 面以等价形状提供（session 头 ↔ 服务端状态、`background` ↔ 异步回合，见 `agent-api.md` §0.1）；若将来需要原生 Responses 形状，走前门协议适配头（`/v1/agent/responses`，设计预留），不动本契约。
 
 ## 版本
 

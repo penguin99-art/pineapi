@@ -1,0 +1,93 @@
+<mxfile host="app.diagrams.net" type="device" version="24.7.7">
+  <diagram id="pinea-overview" name="Pinea 总架构">
+    <mxGraphModel dx="1400" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="900" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- 图例 -->
+        <mxCell id="legend" value="🔵 Pinea Core（无头 · 发 B 端）&lt;br/&gt;🟠 Piny 灵魂层（仅 C 端）" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#999999;fontSize=11;align=left;spacing=6;" vertex="1" parent="1">
+          <mxGeometry x="495" y="45" width="160" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- 使用方 -->
+        <mxCell id="tob" value="&lt;b&gt;ToB：SI App / 容器&lt;/b&gt;&lt;br/&gt;盒子本机优先 · OpenAI SDK 直连" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="60" y="40" width="420" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="toc" value="&lt;b&gt;ToC：桌伴 / PineaStudio / Phone / 外设&lt;/b&gt;&lt;br/&gt;麦克风 / 摄像头 / 传感器" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="660" y="40" width="420" height="70" as="geometry" />
+        </mxCell>
+
+        <!-- P1 网关 -->
+        <mxCell id="gw" value="&lt;b&gt;🔵 P1 Pinea Model Gateway :18800&lt;/b&gt;&lt;br/&gt;设备单一前门 · 默认 127.0.0.1（外放需 Bearer + TLS）&lt;br/&gt;&lt;br/&gt;① 能力面 /v1/chat·embeddings·audio·images·video（无状态）&lt;br/&gt;② Agent 面 /v1/agent/* + X-Session-Id（有状态）&lt;br/&gt;　└ 网关增值层：会话登记/回放 · 异步聚合 · 逻辑删除 gen+1 · 并发闸门 · usage 回填&lt;br/&gt;③ Skills 管理 /v1/skills/*（admin）&lt;br/&gt;治理：门锁 · /v1/capabilities 发现 · /healthz · 用量日志 · QoS 交互&amp;gt;批量 · PINEA_MOCK" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;align=left;spacing=8;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="60" y="180" width="420" height="170" as="geometry" />
+        </mxCell>
+
+        <!-- 灵魂层 -->
+        <mxCell id="soul" value="&lt;b&gt;🟠 Piny 灵魂层（仅 C 端，发 B 端整块摘除）&lt;/b&gt;&lt;br/&gt;&lt;br/&gt;感知 Perception：VAD/motion → ASR/视觉 → 认主&lt;br/&gt;Soul：快/慢分流 ignore / listen / reply / escalate · 唯一写 state（6 态）&lt;br/&gt;表达 Expression：灯带 / TTS / 桌伴 —— 只订阅 state，不自行判态" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=11;align=left;spacing=8;" vertex="1" parent="1">
+          <mxGeometry x="660" y="180" width="420" height="170" as="geometry" />
+        </mxCell>
+
+        <!-- Agent Runtime -->
+        <mxCell id="rt" value="&lt;b&gt;🔵 Agent Runtime（当前 PilotDeck · 只依赖扩展点，可换）&lt;/b&gt;&lt;br/&gt;agent loop / 白盒记忆 / tools·MCP / skills / workspace&lt;br/&gt;api_server :8642（仅本机：只给 P1 转发与 Soul 接缝1）" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;spacing=8;" vertex="1" parent="1">
+          <mxGeometry x="60" y="420" width="420" height="110" as="geometry" />
+        </mxCell>
+
+        <!-- PineaState 总线 -->
+        <mxCell id="bus" value="&lt;b&gt;🟠 PineaState 总线&lt;/b&gt;&lt;br/&gt;presence / voice / intent / core.lifecycle / state&lt;br/&gt;只有 Soul 写 state · Core 不订阅" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=11;spacing=8;" vertex="1" parent="1">
+          <mxGeometry x="660" y="420" width="420" height="110" as="geometry" />
+        </mxCell>
+
+        <!-- 模型后端 -->
+        <mxCell id="be" value="&lt;b&gt;🔵 模型后端（独立进程 · 仅本机 · adapter 可热插拔）&lt;/b&gt;&lt;br/&gt;ollama :11434 chat/视觉/embed（keep_alive 常驻） · speaches STT&lt;br/&gt;Piper/Kokoro TTS · ComfyUI 生图/视频（异步队列）" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;spacing=8;" vertex="1" parent="1">
+          <mxGeometry x="60" y="580" width="420" height="100" as="geometry" />
+        </mxCell>
+
+        <!-- L1 / L0 -->
+        <mxCell id="l1" value="🔵 L1 系统：OS / GPU·显存调度 / 设备 adapter / LAN-mDNS / 物理开关" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="60" y="730" width="1020" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="l0" value="🔵 L0 硬件：盒子 / 麦阵列 / 摄像头 / 灯带 / 传感器" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="60" y="776" width="1020" height="36" as="geometry" />
+        </mxCell>
+
+        <!-- 边 -->
+        <mxCell id="e1" value="HTTP ①②③（OpenAI 兼容 · 外放需 Bearer）" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=10;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="tob" target="gw">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e2" value="设备感知输入（不经网关）" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=10;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="toc" target="soul">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e3" value="wss 流式面（Pinea 流式事件标准）" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=10;dashed=1;exitX=0;exitY=0.7;entryX=1;entryY=0.2;" edge="1" parent="1" source="toc" target="gw">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e4" value="② 转发：X-Session-Id → {app}:{sid}:{gen}" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=10;exitX=0.3;exitY=1;entryX=0.3;entryY=0;" edge="1" parent="1" source="gw" target="rt">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e5" value="model.providers 回打 ①" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=10;exitX=0.75;exitY=0;entryX=0.75;entryY=1;" edge="1" parent="1" source="rt" target="gw">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e6" value="① adapter 路由" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=10;exitX=0;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="gw" target="be">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="25" y="265" />
+              <mxPoint x="25" y="630" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e7" value="接缝1 · 仅 escalate：submitTurn / api_server（带 fast-path 摘要）" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=10;exitX=0.15;exitY=1;entryX=1;entryY=0.25;" edge="1" parent="1" source="soul" target="rt">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e8" value="接缝2 · hook/WS → core.lifecycle" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=10;exitX=1;exitY=0.7;entryX=0;entryY=0.7;" edge="1" parent="1" source="rt" target="bus">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e9" value="presence/voice/intent/core.lifecycle ↑ · state ↓" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=10;exitX=0.5;exitY=0;entryX=0.6;entryY=1;startArrow=classic;startFill=1;" edge="1" parent="1" source="bus" target="soul">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e10" value="skill 落盘 / 搬目录启停" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=10;dashed=1;exitX=0.55;exitY=1;entryX=0.55;entryY=0;" edge="1" parent="1" source="gw" target="rt">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

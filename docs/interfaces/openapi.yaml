@@ -12,8 +12,9 @@ info:
     语义/边界以 Markdown 为准。
 
     v1.0 已冻结（2026-06-10）。稳定性 + 实现状态见 tob-overview.md §7 矩阵。
-    部分端点为 Reserved（标 x-pinea-status: reserved）：形状纳入 v1，但首版不保证可用，
-    需上游 runtime 支持，调用方不得依赖其在首版存在。
+    2026-06-11 修订：② 会话/异步端点重判为网关侧实现，升为 Stable·自定义（排期 T2.5）；
+    仅取消进行中回合（DELETE /v1/agent/turns/{id}）保持 Reserved（标 x-pinea-status: reserved，
+    需上游 runtime 支持，调用方不得依赖其在首版存在）。
 
     兼容性：OpenAI 超集。标记为「镜像」的标准字段承诺不破坏；带 x-pinea-* 的为 Pinea 扩展，
     标准客户端可忽略；自定义端点（/v1/video、/v1/agent、/v1/skills、/v1/capabilities）按版本演进。
@@ -241,6 +242,11 @@ paths:
       parameters:
         - $ref: '#/components/parameters/AppId'
         - $ref: '#/components/parameters/SessionId'
+        - name: X-Pinea-Events
+          in: header
+          required: false
+          schema: { type: string, enum: [extended] }
+          description: 'extended 时在 SSE 流中插入扩展帧（object: pinea.agent.event）；缺省纯 OpenAI 基线流。'
       requestBody:
         required: true
         content:
@@ -258,8 +264,10 @@ paths:
                 background:
                   type: boolean
                   default: false
-                  x-pinea-status: reserved
-                  description: 'Reserved·需上游：true → 202 异步回合，轮询 /v1/agent/turns/{id}。首版不可用，请用 stream。'
+                  description: 'Pinea 扩展（T2.5，网关侧实现）：true → 202 异步回合，轮询 /v1/agent/turns/{id}。'
+                skill:
+                  type: string
+                  description: 'Pinea 扩展（T3）：指定本回合必须使用的已启用 skill（确定性调用，网关注入指令）。不存在/禁用 → 400 skill_not_found / skill_disabled。'
       responses:
         '200':
           description: 同步：chat.completion 或 SSE
@@ -279,7 +287,9 @@ paths:
               schema: { $ref: '#/components/schemas/AsyncJob' }
         '401': { $ref: '#/components/responses/Error' }
         '429':
-          description: 同 session 并发回合（session_busy）
+          description: '同 session 并发回合（session_busy）或设备级并发满（queue_full，带 Retry-After 头）'
+          headers:
+            Retry-After: { schema: { type: integer }, description: 'queue_full 时返回，建议重试等待秒数' }
           content:
             application/json:
               schema: { $ref: '#/components/schemas/ErrorEnvelope' }
@@ -288,8 +298,7 @@ paths:
     get:
       tags: [agent]
       summary: 轮询异步回合
-      x-pinea-status: reserved
-      description: 'Reserved·需上游：api_server 今天无异步任务支持，首版不可用。'
+      description: 'T2.5 网关侧实现：网关代持 SSE 聚合结果。结果保留期部署可配（默认 24h），过期 404 turn_not_found。'
       parameters:
         - $ref: '#/components/parameters/JobId'
       responses:
@@ -301,8 +310,9 @@ paths:
         '404': { $ref: '#/components/responses/Error' }
     delete:
       tags: [agent]
-      summary: 取消进行中异步回合（尽力）
+      summary: 取消进行中异步回合
       x-pinea-status: reserved
+      description: 'Reserved·需上游：真取消需 runtime 支持中止进行中回合，首版不可用。'
       parameters:
         - $ref: '#/components/parameters/JobId'
       responses:
@@ -313,27 +323,25 @@ paths:
     get:
       tags: [agent]
       summary: 列会话（只读）
-      x-pinea-status: reserved
-      description: 'Reserved·需上游：api_server 今天无会话列表端点，首版不可用。'
+      description: 'T2.5 网关侧实现：数据源为网关会话登记表。'
       parameters:
         - $ref: '#/components/parameters/AppId'
       responses:
         '200':
-          description: 会话列表
+          description: '会话列表：{object:"list", data:[{id,app_id,created_at,last_active_at,turns}]}'
           content:
             application/json:
               schema: { type: object, additionalProperties: true }
   /v1/agent/sessions/{id}/messages:
     get:
       tags: [agent]
-      summary: 读会话历史（只读，供 UI 回放）
-      x-pinea-status: reserved
-      description: 'Reserved·需上游：api_server 今天无会话历史读端点，首版不可用。'
+      summary: 读会话回放（只读，供 UI）
+      description: 'T2.5 网关侧实现：返回网关登记的「回合输入 + 最终回答 + usage + 时间戳」，非 runtime 白盒记忆。'
       parameters:
         - $ref: '#/components/parameters/SessionPath'
       responses:
         '200':
-          description: 会话消息
+          description: '会话消息：{object:"list", data:[{turn_id,role,content,usage?,created_at}]}'
           content:
             application/json:
               schema: { type: object, additionalProperties: true }
@@ -341,9 +349,8 @@ paths:
   /v1/agent/sessions/{id}:
     delete:
       tags: [agent]
-      summary: 删会话 + 记忆作用域（被遗忘权）
-      x-pinea-status: reserved
-      description: 'Reserved·需上游：api_server 今天无会话删除端点，首版不可用。'
+      summary: 删会话（逻辑删除 + 网关侧数据清除）
+      description: 'T2.5 网关侧实现：会话键 gen+1（旧上下文/记忆永久不可达）+ 清网关侧登记与回放。runtime 侧物理擦除为运维程序（Reserved·需上游）。幂等。'
       parameters:
         - $ref: '#/components/parameters/SessionPath'
       responses:

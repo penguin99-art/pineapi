@@ -28,7 +28,8 @@
 
 ### 第 2 步 · Outbound 接缝（先做出口，因为可全程假数据驱动）
 - 写表达渲染器：订阅总线 `state` → 驱动灯带 / TTS（TTS 走能力面网关 `/v1/audio/speech`）。
-- 写一个 PilotDeck 磁盘 hook 脚本：`SessionStart/Stop/PreModelRequest` → 往总线发 `state`。
+- 写一个 PilotDeck 磁盘 hook 脚本：`SessionStart/Stop/PreModelRequest` → 往总线发 **`core.lifecycle`** 事件（hook 不直接写 `state`，红线 4）。
+- 写一个**直通版 soul**（约 20 行）：订阅 `core.lifecycle`，按 `interfaces/pineastate-bus.md` §3 的默认映射机械写 `state`。第 5 步真 soul 替换它，桥与表达端契约不变。
 - **通过标准**：手动给内核发一句 → 灯带走 `thinking→speaking→idle`，无需感知就能演示。
 
 ### 第 3 步 · Inbound 接缝
@@ -51,14 +52,30 @@
 
 ## ToB 并行线（🔵Core，不依赖灵魂，可同时推进）
 
-> 契约见 `interfaces/capability-api.md`（①能力面）+ `interfaces/agent-api.md`（②Agent面）+ `interfaces/skill-contract.md`（③公共 skill）。设计见 `model-gateway.md`。
-> 三类 ToB 共用 Model Gateway 设备前门（默认本机，外放需 Bearer Token）。
+> 契约见 `interfaces/capability-api.md`（①）+ `interfaces/agent-api.md`（②）+ `interfaces/skill-contract.md`（③）。设计见 `model-gateway.md`。
+> 三类 ToB 共用 Model Gateway 设备前门（默认本机，外放需 Bearer Token + TLS 规则）。
+> 原则：**B 端的"扎实"不等于端点多，等于三件事——契约语义无歧义、每步有硬验收、SI 能自助对接。**
 
-- **T0 网关骨架 + chat 透传（①）✅ 已过**：FastAPI（`gateway/`，:18800）起 `/v1/chat/completions`→ollama；PilotDeck `model.providers` 指过来。**通过标准**：经网关跑通带工具的多步任务。→ **已达成：经网关 tool-calling 19/20**（唯一失败是模型读了文件没走写入步，非网关弄坏 tool_calls；conformance `gateway/tests/` 6/6 绿）。
-- **T1 STT 端点（①）**：`/v1/audio/transcriptions` → speaches；见 `../research/spikes/stt-gateway.md`。**通过标准**：中文 ~1min 音频转写可用、RTF≤0.5。
-- **T2 Agent 面（②）**：网关 `/v1/agent/chat/completions` 转发 PilotDeck api_server，`X-Session-Id` 翻译 + usage 日志 + 默认 ToB workspace。**通过标准**：带 session 多轮、agent 自用工具多步、同 session 并发 429、内部回打 ① 属于同设备模型线调用，日志可观测且不引入商业计费语义。
-- **T3 「音频资料整理」skill（③）**：Skill 包经 `/v1/skills/*` 管理接口安装，内部落 runtime skill 目录，调网关 STT → 去重/打标/归档入记忆。第一个公共行业 skill。**通过标准**：local_path/zip 安装都可校验 `SKILL.md`，启停状态进 registry，丢一批录音 → 自动转写归档、可被记忆复用。
+- **T0 网关骨架 + chat 透传（①）✅ 已过**：FastAPI（`gateway/`，:18800）起 `/v1/chat/completions`→ollama；PilotDeck `model.providers` 指过来。**通过标准**：经网关跑通带工具的多步任务。→ **已达成：经网关 tool-calling 19/20**，conformance `gateway/tests/` 6/6 绿。
+- **T1 STT 端点（①）**：`/v1/audio/transcriptions` → speaches；见 `../research/spikes/stt-gateway.md`。**通过标准**：中文 ~1min 音频转写可用、RTF≤0.5；**且在 ollama 推理进行中调用，STT 延迟不明显劣化**（QoS 原则"交互类>批量类"的第一次实测，见 `model-gateway.md` §6.4）。
+- **T2 Agent 面（②）**：`/v1/agent/chat/completions` 转发 api_server。**通过标准**：会话键按 `{app_id}:{session_id}:{gen}` 映射；带 session 多轮、agent 自用工具多步；同 session 并发 `429 session_busy`、设备级并发满 `429 queue_full`+`Retry-After`；usage 从 SSE 聚合回填非流式响应；agent 权限以 `network:false` 起跑；端口绑定表自检通过（api_server 锁 127.0.0.1、P2 web UI 关闭，见 `model-gateway.md` §6.1）。
+- **T2.5 网关增值层（②）**：会话登记/回放（`GET /v1/agent/sessions*`）、`background` 异步聚合（`GET /v1/agent/turns/{id}`）、逻辑删除（`gen`+1 + 清网关侧数据）。**通过标准**：SI 全程只靠对外端点完成"开会话→异步跑长任务→轮询拿结果→回放历史→删会话"；P1 重启后登记/结果/`gen` 不丢。
+- **T3 「音频资料整理」skill（③）**：Skill 包经 `/v1/skills/*` 安装，调网关 STT → 去重/打标/归档入记忆。**通过标准**：local_path/zip 安装均校验 `SKILL.md`，启停进 registry；**用 `skill` 字段确定性调用，丢 20 个真实音频文件 20/20 走完整归档工序**（不是"演示成功过一次"）；同步产出《skill 开发指南》初版（SI 能照着写自己的行业 skill）。
 - **T4 按需扩模态（①）**：TTS → 生图 → 视频（异步）；盒子选型见 `../research/spikes/vllm-omni-box.md`。
+- **T-D 交付线（与 T2/T3 并行，决定第一单能否交付）**：每项都小，但缺一不可（详见 `model-gateway.md` §6.6）：
+  1. `PINEA_MOCK=1` mock 模式产品化；
+  2. SI quickstart（一页：base_url+token+三段 curl+容器两种姿势）;
+  3. 出厂验收脚本（conformance+端口自检+真回合+skill 样本，一键绿）；
+  4. 诊断包（一条命令出包）；
+  5. 装机/加固清单（开机自启、模型 `keep_alive` 常驻、token 开通、端口表落地）。
+
+**首单就绪（ToB 线的终点标志，五条全绿才见客户）**：
+
+1. Stable 子集全部实现，conformance（mock+真后端同套）绿；
+2. 旗舰 skill 确定性调用 20/20；
+3. 出厂验收脚本一键绿；
+4. 没接触过项目的工程师拿 quickstart+mock，30 分钟跑通三段 curl；
+5. 诊断包一条命令出包。
 
 并行约定：每个能力先用 **mock 后端**立契约，SI/skill 同时对接，真模型后置替换（契约不变）。
 
@@ -66,4 +83,4 @@
 
 1. **风险前置**：第 0 步的本地模型 tool calling 是成败点,死磕它再做别的。
 2. **假数据先行**：第 2/3 步全程假数据,让灵魂线四进程(感知/soul/表达/runtime,不含网关)并行,不互相阻塞;第 4 步才换真感知。
-3. **状态唯一真相源**：只有第 5 步的状态机往总线写目标态,所有表达端只订阅渲染。
+3. **状态唯一真相源**：只有状态机进程往总线写目标态（第 2 步先用直通版映射，第 5 步换真 soul，写者始终唯一）,所有表达端只订阅渲染。
