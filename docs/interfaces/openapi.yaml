@@ -350,11 +350,11 @@ paths:
     delete:
       tags: [agent]
       summary: 删会话（逻辑删除 + 网关侧数据清除）
-      description: 'T2.5 网关侧实现：会话键 gen+1（旧上下文/记忆永久不可达）+ 清网关侧登记与回放。runtime 侧物理擦除为运维程序（Reserved·需上游）。幂等。'
+      description: 'T2.5 网关侧实现：会话键 gen+1（旧上下文/记忆永久不可达）+ 清网关侧登记与回放。删除成功后重复调用不会让旧会话复活；会话不存在返回 404。runtime 侧物理擦除为运维程序（Reserved·需上游）。'
       parameters:
         - $ref: '#/components/parameters/SessionPath'
       responses:
-        '200': { description: 已删除（幂等）}
+        '200': { description: 已删除}
         '404': { $ref: '#/components/responses/Error' }
 
   /v1/skills:

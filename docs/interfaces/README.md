@@ -6,7 +6,7 @@
 
 ## 契约地图（按 `architecture.md` §0 分层）
 
-三类 ToB 共用 **Pinea Model Gateway 设备前门**（默认 `127.0.0.1`，外放需 Bearer Token），按"自己搭多少 vs 白嫖多少"自底向上叠：① 给算力、② 给 agent、③ 给行业 agent。
+三类 ToB 共用 **Pinea Model Gateway 设备前门**（默认 `127.0.0.1`，外放需 Bearer Token），按"自建多少 vs 复用多少"自底向上叠：① 给算力、② 给 agent、③ 给行业 agent。
 
 | 接缝 / 契约 | 谁定义 | 谁消费 | 文档 | 用途 |
 | --- | --- | --- | --- | --- |

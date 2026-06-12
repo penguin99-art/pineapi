@@ -64,7 +64,7 @@
 - **T4 按需扩模态（①）**：TTS → 生图 → 视频（异步）；盒子选型见 `../research/spikes/vllm-omni-box.md`。
 - **T-D 交付线（与 T2/T3 并行，决定第一单能否交付）**：每项都小，但缺一不可（详见 `model-gateway.md` §6.6）：
   1. `PINEA_MOCK=1` mock 模式产品化；
-  2. SI quickstart（一页：base_url+token+三段 curl+容器两种姿势）;
+  2. SI quickstart（一页：base_url+token+三段 curl+容器两种部署方式）;
   3. 出厂验收脚本（conformance+端口自检+真回合+skill 样本，一键绿）；
   4. 诊断包（一条命令出包）；
   5. 装机/加固清单（开机自启、模型 `keep_alive` 常驻、token 开通、端口表落地）。

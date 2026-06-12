@@ -1,7 +1,7 @@
 """FastAPI 入口 + 路由注册 + 统一异常处理。
 
 启动：
-    uvicorn pinea_gateway.app:app --host 0.0.0.0 --port 8080
+    uvicorn pinea_gateway.app:app --host 0.0.0.0 --port 18800
 或：
     python -m pinea_gateway   （见 __main__.py）
 """

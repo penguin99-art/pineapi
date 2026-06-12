@@ -21,7 +21,7 @@
 
 - 所有端点接受可选头 `X-Pinea-App-Id`，缺省 `default`。
 - 作用范围（v1 形状，MVP 不强制隔离）：
-  - ② 的有效会话 = `(app_id, X-Session-Id)`，避免不同 SI 用同一 session 字符串串台。
+  - ② 的有效会话 = `(app_id, X-Session-Id)`，避免不同 SI 用同一 session 字符串导致会话混淆。
   - ③ skill 命名空间与 workspace 绑定到 `app_id`。
   - 观测日志带 `app_id` 字段。
 - **MVP 行为**：只接受/记录，单值 `default`，不做强隔离；调用方现在传不传都行。**正式做多 SI 隔离 = 把 `app_id` 提升为强隔离键**，端点形状不变。

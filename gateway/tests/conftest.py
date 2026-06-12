@@ -1,7 +1,7 @@
 """conformance 夹具：测试只认 base_url，可打 mock 也可打真网关。
 
 - 默认起一个进程内的 TestClient（真 app + mock ollama 后端），离线可跑。
-- 设 PINEA_TEST_BASE_URL=http://localhost:8080 则打真网关（真后端），同一套用例。
+- 设 PINEA_TEST_BASE_URL=http://localhost:18800 则打真网关（真后端），同一套用例。
 
 这就是"先 mock 后真，契约不变"的执行体（interfaces/capability-api.md §并行约定）。
 """

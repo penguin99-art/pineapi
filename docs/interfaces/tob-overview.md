@@ -61,7 +61,7 @@ B 端开发者 / SI App ── 设备 base_url + 可选 Bearer Token ──► P
 | `GET /v1/agent/turns/{id}` | 异步回合轮询（配 `background:true`） | T2.5 |
 | `GET /v1/agent/sessions/{id}/messages` | 会话回放（网关登记的输入/回答对，供 UI） | T2.5 |
 | `GET /v1/agent/sessions` | 列会话 | T2.5 |
-| `DELETE /v1/agent/sessions/{id}` | 删会话：逻辑删除 + 网关侧数据清除（被遗忘权抓手） | T2.5 |
+| `DELETE /v1/agent/sessions/{id}` | 删会话：逻辑删除 + 网关侧数据清除（支撑「删除/被遗忘」承诺） | T2.5 |
 
 实现分工（关键）：**runtime 只提供"单回合执行"**（sync + SSE）；**会话登记、回放、异步聚合、删除、并发闸门全部由网关增值层实现**（`../model-gateway.md` §6.3）。② 的完整产品形态因此不依赖 runtime 上游排期，唯二例外见 §7 的两条 Reserved。
 
