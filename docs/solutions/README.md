@@ -28,7 +28,7 @@ docs/solutions/<customer-slug>/
 ## 三条规则
 
 1. **方案引用契约只指 Stable 端点**（`../interfaces/tob-overview.md` §7 矩阵），并注明契约 tag。方案不得依赖 Reserved 端点。
-2. **映射出的平台缺口不在方案里解决**：记入 `capability-mapping.md` 的缺口清单 → 评估后进 `../build-plan.md` 排期。客户需求不直接改契约。
+2. **映射出的平台缺口不在方案里解决**：记入 `integration-plan.md` 的缺口清单 → 评估后进 `../build-plan.md` 排期。客户需求不直接改契约。
 3. **凡是承诺给客户的 AI 效果，必须有验收样例集兜底**（实测 N/N，不承诺 100%）——这是 SLA 边界（`../model-gateway.md` §6.6）的方案侧落点。
 
 ## 当前方案
